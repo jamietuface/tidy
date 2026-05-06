@@ -4,6 +4,7 @@ import 'tidy_radius.dart';
 import 'tidy_size.dart';
 import 'tidy_spacing.dart';
 import 'tidy_typography.dart';
+import '../../theme/app_theme.dart' show TidyThemeExtension;
 
 /// Assembles ThemeData for light + dark modes from Tidy's design tokens.
 class TidyTheme {
@@ -109,7 +110,10 @@ class TidyTheme {
         titleTextStyle: TidyTypography.headingMedium.copyWith(color: colors.textPrimary),
         contentTextStyle: TidyTypography.bodyMedium.copyWith(color: colors.textPrimary),
       ),
-      extensions: <ThemeExtension<dynamic>>[colors],
+      extensions: <ThemeExtension<dynamic>>[
+        colors,
+        TidyThemeExtension.fromTidyColors(colors),
+      ],
     );
   }
 }

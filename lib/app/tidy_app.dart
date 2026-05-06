@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/theme/tidy_theme.dart';
-import '../features/you/providers/theme_preference_notifier.dart';
 import 'router.dart';
 
 class TidyApp extends ConsumerWidget {
@@ -15,7 +14,7 @@ class TidyApp extends ConsumerWidget {
       debugShowCheckedModeBanner: false,
       theme: TidyTheme.light(),
       darkTheme: TidyTheme.dark(),
-      themeMode: ref.watch(themePreferenceProvider),
+      themeMode: ThemeMode.system,
       routerConfig: ref.watch(routerProvider),
     );
   }
