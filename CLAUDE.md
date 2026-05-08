@@ -4,16 +4,16 @@
 
 ## ⚡ Notion Auto-Documentation (MANDATORY — EVERY CHANGE)
 
-**After EVERY code change, Claude MUST log it to Notion automatically.**
+**After EVERY code change, Claude MUST log it to Notion using the Notion MCP.**
 
-Run this script after every commit:
-```bash
-~/.tidy/notion-log.sh "$(git log -1 --pretty='%s')" "$(git log -1 --pretty='%b')"
-```
+Use the `notion-update-page` or `notion-create-pages` MCP tool to append an entry to the Dev Log page.
 
-The script posts to the Tidy Changelog page in Notion. No exceptions. If the script fails, note it but still proceed — do not block on Notion.
+- **Dev Log page ID:** `3594a228-bde2-81dd-aedf-c63699ae2154`
+- **Tidy root page ID:** `3594a228-bde2-8168-8dc4-dcf5136690b5`
 
-Notion workspace: https://notion.so/d563af77025c4dc3a9ee5968e1d99771
+Log entry format: `[YYYY-MM-DD] <what changed> — <files affected>`
+
+No exceptions. If the MCP call fails, note it but still proceed — do not block on Notion.
 
 ---
 
@@ -199,10 +199,9 @@ cd /Users/jamietu/Desktop/Tidy && git add -p && git commit -m "..." && git push
 ```
 
 ### Step 7: 🔴 LOG TO NOTION (MANDATORY)
-```bash
-~/.tidy/notion-log.sh "CHANGE_TITLE" "CHANGE_DESCRIPTION"
-```
-Every commit must be logged to Notion. No exceptions.
+Use the Notion MCP to append to the Dev Log page (`3594a228-bde2-81dd-aedf-c63699ae2154`).
+Entry: `[YYYY-MM-DD] <what changed> — <files affected>`
+Every change must be logged. No exceptions.
 
 ### Step 8: Update /docs
 Update the relevant doc file if the change affects architecture, features, or patterns.

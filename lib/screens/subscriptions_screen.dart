@@ -16,85 +16,181 @@ class SubscriptionsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final ext = theme.extension<TidyThemeExtension>()!;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bg = isDark ? Colors.black : AppColors.systemGray6;
 
     return Scaffold(
-      backgroundColor: ext.groupedBackground,
+      backgroundColor: bg,
       body: CustomScrollView(
         slivers: [
           SliverAppBar.large(
             title: const Text('Apps'),
-            backgroundColor: ext.groupedBackground,
+            backgroundColor: bg,
             surfaceTintColor: Colors.transparent,
+            scrolledUnderElevation: 0,
           ),
           SliverPadding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
-                // Spending summary
-                TidyCard(
-                  padding: const EdgeInsets.all(20),
-                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                    Text('Monthly Spend', style: theme.textTheme.labelMedium?.copyWith(color: AppColors.systemGray)),
-                    const SizedBox(height: 4),
-                    Text('£40.96', style: theme.textTheme.displaySmall?.copyWith(fontWeight: FontWeight.w700)),
-                    const SizedBox(height: 12),
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(4),
-                      child: LinearProgressIndicator(
-                        value: 0.68,
-                        backgroundColor: AppColors.systemGray5,
-                        valueColor: const AlwaysStoppedAnimation(AppColors.systemBlue),
-                        minHeight: 6,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text('£27.84 used this month', style: theme.textTheme.bodySmall?.copyWith(color: AppColors.systemGray)),
-                  ]),
-                ),
+                // Spend summary — gradient card
+                _SpendSummaryCard(isDark: isDark),
                 const SizedBox(height: 24),
 
                 const SectionHeader(title: 'Recently Used'),
-                const SizedBox(height: 8),
+                const SizedBox(height: 10),
                 TidyCard(
                   child: Column(
                     children: _mockApps.asMap().entries.map((e) {
                       final isLast = e.key == _mockApps.length - 1;
                       return Column(children: [
                         _AppRow(app: e.value),
-                        if (!isLast) const Divider(height: 1, indent: 68),
+                        if (!isLast) Divider(
+                          height: 0.5,
+                          indent: 68,
+                          color: isDark ? const Color(0xFF38383A) : const Color(0xFFE5E5EA),
+                        ),
                       ]);
                     }).toList(),
                   ),
                 ),
                 const SizedBox(height: 24),
 
-                // Save money tip
-                TidyCard(
-                  padding: const EdgeInsets.all(16),
-                  child: Row(children: [
-                    Container(
-                      width: 44, height: 44,
-                      decoration: BoxDecoration(
-                        color: AppColors.systemGreen.withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Icon(CupertinoIcons.lightbulb_fill, color: AppColors.systemGreen, size: 22),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text('Cancel Headspace?', style: theme.textTheme.titleSmall),
-                      Text('Last used 3 weeks ago • saves £12.99/mo', style: theme.textTheme.bodySmall?.copyWith(color: AppColors.systemGray)),
-                    ])),
-                  ]),
-                ),
+                // Cancel tip
+                _CancelTipCard(isDark: isDark),
                 const SizedBox(height: 32),
               ]),
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+class _SpendSummaryCard extends StatelessWidget {
+  const _SpendSummaryCard({required this.isDark});
+  final bool isDark;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: isDark
+              ? [const Color(0xFF1C1C1E), const Color(0xFF2C2C2E)]
+              : [Colors.white, const Color(0xFFF8F8FF)],
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: isDark ? const Color(0xFF2C2C2E) : const Color(0xFFE5E5EA),
+          width: 0.5,
+        ),
+        boxShadow: isDark ? [] : [
+          const BoxShadow(color: Color(0x0A000000), offset: Offset(0, 0), blurRadius: 0, spreadRadius: 0.5),
+          const BoxShadow(color: Color(0x14000000), offset: Offset(0, 2), blurRadius: 8),
+        ],
+      ),
+      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(
+          'Monthly Spend',
+          style: Theme.of(context).textTheme.labelMedium?.copyWith(
+            color: isDark ? Colors.white.withValues(alpha: 0.4) : Colors.black.withValues(alpha: 0.4),
+          ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          '£40.96',
+          style: TextStyle(
+            fontSize: 34,
+            fontWeight: FontWeight.w700,
+            letterSpacing: -0.5,
+            color: isDark ? Colors.white : Colors.black,
+          ),
+        ),
+        const SizedBox(height: 14),
+        // Progress bar
+        ClipRRect(
+          borderRadius: BorderRadius.circular(6),
+          child: Stack(
+            children: [
+              Container(
+                height: 6,
+                color: isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.06),
+              ),
+              FractionallySizedBox(
+                widthFactor: 0.68,
+                child: Container(
+                  height: 6,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: [Color(0xFF007AFF), Color(0xFF5856D6)],
+                    ),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          '£27.84 used this month',
+          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+            color: isDark ? Colors.white.withValues(alpha: 0.4) : Colors.black.withValues(alpha: 0.35),
+          ),
+        ),
+      ]),
+    );
+  }
+}
+
+class _CancelTipCard extends StatelessWidget {
+  const _CancelTipCard({required this.isDark});
+  final bool isDark;
+
+  @override
+  Widget build(BuildContext context) {
+    return TidyCard(
+      padding: const EdgeInsets.all(16),
+      child: Row(children: [
+        Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: AppColors.systemOrange.withValues(alpha: 0.15),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: const Icon(
+            CupertinoIcons.lightbulb_fill,
+            color: AppColors.systemOrange,
+            size: 22,
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(
+              'Cancel Headspace?',
+              style: Theme.of(context).textTheme.titleSmall,
+            ),
+            Text(
+              'Last used 3 weeks ago · saves £12.99/mo',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: isDark ? Colors.white.withValues(alpha: 0.4) : Colors.black.withValues(alpha: 0.4),
+              ),
+            ),
+          ]),
+        ),
+        Icon(
+          CupertinoIcons.chevron_right,
+          size: 14,
+          color: isDark ? Colors.white.withValues(alpha: 0.25) : Colors.black.withValues(alpha: 0.2),
+        ),
+      ]),
     );
   }
 }
@@ -112,20 +208,37 @@ class _AppRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Row(children: [
         Container(
-          width: 44, height: 44,
-          decoration: BoxDecoration(color: app.color.withOpacity(0.12), borderRadius: BorderRadius.circular(10)),
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            color: app.color.withValues(alpha: isDark ? 0.18 : 0.12),
+            borderRadius: BorderRadius.circular(10),
+          ),
           child: Icon(app.icon, color: app.color, size: 22),
         ),
         const SizedBox(width: 12),
-        Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(app.name, style: Theme.of(context).textTheme.titleSmall),
-          Text('Last used ${app.lastUsed}', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.systemGray)),
-        ])),
-        Text(app.price, style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500)),
+        Expanded(
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Text(app.name, style: Theme.of(context).textTheme.titleSmall),
+            Text(
+              'Last used ${app.lastUsed}',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: isDark ? Colors.white.withValues(alpha: 0.4) : Colors.black.withValues(alpha: 0.4),
+              ),
+            ),
+          ]),
+        ),
+        Text(
+          app.price,
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            fontWeight: FontWeight.w500,
+          ),
+        ),
       ]),
     );
   }

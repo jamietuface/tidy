@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'tidy_colors.dart';
 import 'tidy_radius.dart';
 import 'tidy_size.dart';
@@ -14,6 +15,8 @@ class TidyTheme {
   static ThemeData dark() => _build(TidyColors.dark, Brightness.dark);
 
   static ThemeData _build(TidyColors colors, Brightness brightness) {
+    final isDark = brightness == Brightness.dark;
+
     return ThemeData(
       useMaterial3: true,
       brightness: brightness,
@@ -21,38 +24,58 @@ class TidyTheme {
       colorScheme: ColorScheme(
         brightness: brightness,
         primary: colors.accent,
-        onPrimary: colors.backgroundPrimary,
+        onPrimary: Colors.white,
         secondary: colors.accentMuted,
-        onSecondary: colors.backgroundPrimary,
+        onSecondary: isDark ? Colors.white : colors.textPrimary,
         surface: colors.surfaceCard,
         onSurface: colors.textPrimary,
         error: colors.errorQuiet,
-        onError: colors.backgroundPrimary,
+        onError: Colors.white,
       ),
       textTheme: TextTheme(
-        displayLarge: TidyTypography.displayLarge.copyWith(color: colors.textPrimary),
+        displayLarge:  TidyTypography.displayLarge.copyWith(color: colors.textPrimary),
         displayMedium: TidyTypography.displayMedium.copyWith(color: colors.textPrimary),
+        displaySmall:  TidyTypography.headingMedium.copyWith(color: colors.textPrimary),
         headlineMedium: TidyTypography.headingMedium.copyWith(color: colors.textPrimary),
-        headlineSmall: TidyTypography.headingSmall.copyWith(color: colors.textPrimary),
-        bodyLarge: TidyTypography.bodyLarge.copyWith(color: colors.textPrimary),
-        bodyMedium: TidyTypography.bodyMedium.copyWith(color: colors.textPrimary),
-        bodySmall: TidyTypography.bodySmall.copyWith(color: colors.textSecondary),
+        headlineSmall:  TidyTypography.headingSmall.copyWith(color: colors.textPrimary),
+        titleLarge:    TidyTypography.headingSmall.copyWith(color: colors.textPrimary),
+        titleMedium:   TidyTypography.bodyLarge.copyWith(
+          fontWeight: FontWeight.w600,
+          color: colors.textPrimary,
+        ),
+        titleSmall:    TidyTypography.bodyMedium.copyWith(
+          fontWeight: FontWeight.w600,
+          color: colors.textPrimary,
+        ),
+        bodyLarge:   TidyTypography.bodyLarge.copyWith(color: colors.textPrimary),
+        bodyMedium:  TidyTypography.bodyMedium.copyWith(color: colors.textPrimary),
+        bodySmall:   TidyTypography.bodySmall.copyWith(color: colors.textSecondary),
         labelMedium: TidyTypography.caption.copyWith(color: colors.textSecondary),
-        labelSmall: TidyTypography.labelSmall.copyWith(color: colors.textSecondary),
+        labelSmall:  TidyTypography.labelSmall.copyWith(color: colors.textTertiary),
+      ),
+      appBarTheme: AppBarTheme(
+        backgroundColor: colors.backgroundPrimary,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        titleTextStyle: TidyTypography.headingSmall.copyWith(color: colors.textPrimary),
+        systemOverlayStyle: isDark
+            ? SystemUiOverlayStyle.light
+            : SystemUiOverlayStyle.dark,
       ),
       cardTheme: CardThemeData(
         color: colors.surfaceCard,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          side: BorderSide(color: colors.borderSubtle, width: 1),
+          side: BorderSide(color: colors.borderSubtle, width: 0.5),
           borderRadius: BorderRadius.circular(TidyRadius.md),
         ),
         margin: EdgeInsets.zero,
       ),
       dividerTheme: DividerThemeData(
         color: colors.borderSubtle,
-        thickness: 1,
-        space: 1,
+        thickness: 0.5,
+        space: 0.5,
       ),
       inputDecorationTheme: InputDecorationTheme(
         filled: false,
@@ -62,52 +85,50 @@ class TidyTheme {
         contentPadding: const EdgeInsets.all(TidySpacing.lg),
         hintStyle: TidyTypography.bodyLarge.copyWith(color: colors.textTertiary),
       ),
-      iconTheme: IconThemeData(color: colors.textPrimary, size: 20),
+      iconTheme: IconThemeData(color: colors.textPrimary, size: 22),
       navigationBarTheme: NavigationBarThemeData(
-        backgroundColor: colors.backgroundPrimary,
+        backgroundColor: isDark
+            ? colors.backgroundPrimary.withValues(alpha: 0.85)
+            : colors.backgroundSecondary.withValues(alpha: 0.85),
         surfaceTintColor: Colors.transparent,
-        indicatorColor: colors.accentMuted.withValues(alpha: 0.18),
+        shadowColor: Colors.transparent,
+        indicatorColor: colors.accent.withValues(alpha: 0.15),
         elevation: 0,
         height: TidySize.navBarHeight,
         labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           final selected = states.contains(WidgetState.selected);
-          return TidyTypography.caption.copyWith(
-            color: selected ? colors.textPrimary : colors.textTertiary,
+          return TidyTypography.labelSmall.copyWith(
+            fontSize: 10,
+            color: selected ? colors.accent : colors.textTertiary,
           );
         }),
         iconTheme: WidgetStateProperty.resolveWith((states) {
           final selected = states.contains(WidgetState.selected);
           return IconThemeData(
-            color: selected ? colors.textPrimary : colors.textTertiary,
-            size: 22,
+            color: selected ? colors.accent : colors.textTertiary,
+            size: 24,
           );
         }),
       ),
       snackBarTheme: SnackBarThemeData(
-        backgroundColor: colors.surfaceCard,
+        backgroundColor: isDark ? const Color(0xFF2C2C2E) : Colors.white,
         contentTextStyle: TidyTypography.bodyMedium.copyWith(color: colors.textPrimary),
-        // Action label colour is forced via actionTextColor; the action's
-        // typography (size/weight) inherits Flutter's TextButton default
-        // because SnackBarThemeData doesn't expose an actionTextStyle field
-        // in this Flutter version. Acceptable trade-off — the action stays
-        // readable and the colour matches the accent token.
         actionTextColor: colors.accent,
         elevation: 0,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(
-          side: BorderSide(color: colors.borderSubtle, width: 1),
+          side: BorderSide(color: colors.borderSubtle, width: 0.5),
           borderRadius: BorderRadius.circular(TidyRadius.md),
         ),
       ),
       dialogTheme: DialogThemeData(
-        backgroundColor: colors.surfaceCard,
+        backgroundColor: isDark ? const Color(0xFF2C2C2E) : Colors.white,
         elevation: 0,
         shape: RoundedRectangleBorder(
-          side: BorderSide(color: colors.borderSubtle, width: 1),
-          borderRadius: BorderRadius.circular(TidyRadius.lg),
+          borderRadius: BorderRadius.circular(TidyRadius.xl),
         ),
-        titleTextStyle: TidyTypography.headingMedium.copyWith(color: colors.textPrimary),
+        titleTextStyle: TidyTypography.headingSmall.copyWith(color: colors.textPrimary),
         contentTextStyle: TidyTypography.bodyMedium.copyWith(color: colors.textPrimary),
       ),
       extensions: <ThemeExtension<dynamic>>[

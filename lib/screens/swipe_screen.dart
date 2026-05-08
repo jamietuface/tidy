@@ -1,48 +1,35 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+
+import '../features/swipe/group_type.dart';
+import '../features/swipe/swipe_card_screen.dart';
 import '../theme/app_theme.dart';
-import '../widgets/tidy_card.dart';
 import '../widgets/section_header.dart';
 
-class SwipeScreen extends StatefulWidget {
+class SwipeScreen extends StatelessWidget {
   const SwipeScreen({super.key});
 
   @override
-  State<SwipeScreen> createState() => _SwipeScreenState();
-}
-
-class _SwipeScreenState extends State<SwipeScreen> with SingleTickerProviderStateMixin {
-  double _dragX = 0;
-  late AnimationController _snapController;
-
-  @override
-  void initState() {
-    super.initState();
-    _snapController = AnimationController(vsync: this, duration: const Duration(milliseconds: 200));
-  }
-
-  @override
-  void dispose() {
-    _snapController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final ext = theme.extension<TidyThemeExtension>()!;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bg = isDark ? Colors.black : AppColors.systemGray6;
 
     return Scaffold(
-      backgroundColor: ext.groupedBackground,
+      backgroundColor: bg,
       body: CustomScrollView(
         slivers: [
           SliverAppBar.large(
             title: const Text('Tidy'),
-            backgroundColor: ext.groupedBackground,
+            backgroundColor: bg,
             surfaceTintColor: Colors.transparent,
+            scrolledUnderElevation: 0,
             actions: [
               IconButton(
-                icon: const Icon(CupertinoIcons.slider_horizontal_3),
+                icon: Icon(
+                  CupertinoIcons.slider_horizontal_3,
+                  color: isDark ? Colors.white : Colors.black,
+                ),
                 onPressed: () {},
               ),
             ],
@@ -51,28 +38,17 @@ class _SwipeScreenState extends State<SwipeScreen> with SingleTickerProviderStat
             padding: const EdgeInsets.symmetric(horizontal: 16),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
-                // AI Groups
                 const SectionHeader(title: 'AI Groups'),
-                const SizedBox(height: 8),
-                _AIGroupsRow(),
-                const SizedBox(height: 24),
+                const SizedBox(height: 12),
+                const _AIGroupsRow(),
+                const SizedBox(height: 28),
 
-                // Stats
                 const SectionHeader(title: 'This Week'),
-                const SizedBox(height: 8),
-                TidyCard(
-                  child: Column(children: [
-                    _StatRow(CupertinoIcons.checkmark_circle_fill, AppColors.systemGreen, 'Kept', '0'),
-                    const Divider(height: 1, indent: 44),
-                    _StatRow(CupertinoIcons.trash, AppColors.systemRed, 'Deleted', '0'),
-                    const Divider(height: 1, indent: 44),
-                    _StatRow(CupertinoIcons.cloud, AppColors.systemBlue, 'Space Freed', '0 MB'),
-                  ]),
-                ),
-                const SizedBox(height: 24),
+                const SizedBox(height: 12),
+                _ThisWeekCard(isDark: isDark),
+                const SizedBox(height: 28),
 
-                // Start swiping CTA
-                _SwipeCTA(),
+                const _SwipeCTA(),
                 const SizedBox(height: 32),
               ]),
             ),
@@ -84,37 +60,62 @@ class _SwipeScreenState extends State<SwipeScreen> with SingleTickerProviderStat
 }
 
 class _AIGroupsRow extends StatelessWidget {
-  final groups = const [
-    ('Blurry', CupertinoIcons.rays, AppColors.systemOrange),
-    ('Screenshots', CupertinoIcons.device_phone_portrait, AppColors.systemBlue),
-    ('Duplicates', CupertinoIcons.square_on_square, AppColors.systemPurple),
-    ('Old', CupertinoIcons.clock, AppColors.systemGray),
-  ];
+  const _AIGroupsRow();
+
+  // Mock counts — replaced by real photo analysis later.
+  static const _mockCounts = {
+    GroupType.blurry: 47,
+    GroupType.screenshots: 124,
+    GroupType.duplicates: 23,
+    GroupType.old: 312,
+  };
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final labelColor = isDark
+        ? Colors.white.withValues(alpha: 0.6)
+        : Colors.black.withValues(alpha: 0.55);
+
     return SizedBox(
-      height: 100,
+      height: 108,
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        itemCount: groups.length,
-        separatorBuilder: (_, __) => const SizedBox(width: 12),
+        itemCount: GroupType.values.length,
+        separatorBuilder: (_, __) => const SizedBox(width: 14),
         itemBuilder: (context, i) {
-          final (label, icon, color) = groups[i];
-          return Column(
-            children: [
-              Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                  color: color.withOpacity(0.12),
-                  borderRadius: BorderRadius.circular(16),
+          final group = GroupType.values[i];
+          final count = _mockCounts[group]!;
+          return GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => context.push(
+              '/swipe/group',
+              extra: {'type': group, 'count': count},
+            ),
+            child: Column(
+              children: [
+                Container(
+                  width: 72,
+                  height: 72,
+                  decoration: BoxDecoration(
+                    color: group.color.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  alignment: Alignment.center,
+                  child: Icon(group.icon, color: group.color, size: 30),
                 ),
-                child: Icon(icon, color: color, size: 28),
-              ),
-              const SizedBox(height: 6),
-              Text(label, style: Theme.of(context).textTheme.labelSmall),
-            ],
+                const SizedBox(height: 8),
+                Text(
+                  group.shortLabel,
+                  style: TextStyle(
+                    color: labelColor,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    letterSpacing: -0.1,
+                  ),
+                ),
+              ],
+            ),
           );
         },
       ),
@@ -122,56 +123,192 @@ class _AIGroupsRow extends StatelessWidget {
   }
 }
 
-class _SwipeCTA extends StatelessWidget {
+class _ThisWeekCard extends StatelessWidget {
+  const _ThisWeekCard({required this.isDark});
+  final bool isDark;
+
   @override
   Widget build(BuildContext context) {
+    final divider = isDark ? const Color(0xFF38383A) : const Color(0xFFE5E5EA);
+    final cardBg = isDark ? const Color(0xFF1C1C1E) : Colors.white;
+
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [AppColors.systemBlue, AppColors.systemIndigo],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(16),
+        color: cardBg,
+        borderRadius: BorderRadius.circular(14),
       ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Text('Start Tidying', style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w700)),
-        const SizedBox(height: 4),
-        Text('0 photos ready to review', style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 15)),
-        const SizedBox(height: 16),
-        FilledButton(
-          onPressed: () {},
-          style: FilledButton.styleFrom(
-            backgroundColor: Colors.white,
-            foregroundColor: AppColors.systemBlue,
-            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Column(
+        children: [
+          const _StatRow(
+            icon: CupertinoIcons.checkmark_circle_fill,
+            color: AppColors.systemGreen,
+            label: 'Kept',
+            value: '0',
           ),
-          child: const Text('Swipe Photos', style: TextStyle(fontWeight: FontWeight.w600)),
-        ),
-      ]),
+          Container(height: 0.5, margin: const EdgeInsets.only(left: 56), color: divider),
+          const _StatRow(
+            icon: CupertinoIcons.trash,
+            color: AppColors.systemRed,
+            label: 'Deleted',
+            value: '0',
+          ),
+          Container(height: 0.5, margin: const EdgeInsets.only(left: 56), color: divider),
+          const _StatRow(
+            icon: CupertinoIcons.cloud,
+            color: AppColors.systemBlue,
+            label: 'Space Freed',
+            value: '0 MB',
+          ),
+        ],
+      ),
     );
   }
 }
 
 class _StatRow extends StatelessWidget {
-  const _StatRow(this.icon, this.color, this.label, this.value);
+  const _StatRow({
+    required this.icon,
+    required this.color,
+    required this.label,
+    required this.value,
+  });
+
   final IconData icon;
   final Color color;
-  final String label, value;
+  final String label;
+  final String value;
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final labelColor = isDark ? Colors.white : Colors.black;
+    final valueColor = isDark
+        ? Colors.white.withValues(alpha: 0.45)
+        : Colors.black.withValues(alpha: 0.4);
+
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      child: Row(children: [
-        Icon(icon, color: color, size: 22),
-        const SizedBox(width: 12),
-        Expanded(child: Text(label, style: Theme.of(context).textTheme.bodyLarge)),
-        Text(value, style: Theme.of(context).textTheme.bodyLarge?.copyWith(color: AppColors.systemGray)),
-      ]),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+      child: Row(
+        children: [
+          Container(
+            width: 28,
+            height: 28,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.15),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            alignment: Alignment.center,
+            child: Icon(icon, color: color, size: 16),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Text(
+              label,
+              style: TextStyle(
+                color: labelColor,
+                fontSize: 16,
+                fontWeight: FontWeight.w400,
+                letterSpacing: -0.2,
+              ),
+            ),
+          ),
+          Text(
+            value,
+            style: TextStyle(
+              color: valueColor,
+              fontSize: 16,
+              fontWeight: FontWeight.w400,
+              letterSpacing: -0.2,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SwipeCTA extends StatelessWidget {
+  const _SwipeCTA();
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onTap: () => Navigator.of(context).push(
+        PageRouteBuilder(
+          opaque: true,
+          transitionDuration: const Duration(milliseconds: 280),
+          pageBuilder: (_, __, ___) => const SwipeCardScreen(),
+          transitionsBuilder: (_, anim, __, child) {
+            final curved = CurvedAnimation(parent: anim, curve: Curves.easeOutCubic);
+            return FadeTransition(
+              opacity: curved,
+              child: ScaleTransition(
+                scale: Tween<double>(begin: 0.96, end: 1).animate(curved),
+                child: child,
+              ),
+            );
+          },
+        ),
+      ),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          gradient: const LinearGradient(
+            colors: [Color(0xFF007AFF), Color(0xFF5856D6)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+          borderRadius: BorderRadius.circular(18),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF007AFF).withValues(alpha: 0.35),
+              offset: const Offset(0, 8),
+              blurRadius: 24,
+            ),
+          ],
+        ),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Start Tidying',
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 22,
+                fontWeight: FontWeight.w700,
+                letterSpacing: -0.3,
+              ),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              '0 photos ready to review',
+              style: TextStyle(
+                color: Colors.white.withValues(alpha: 0.75),
+                fontSize: 15,
+                fontWeight: FontWeight.w400,
+              ),
+            ),
+            const SizedBox(height: 18),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 11),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Text(
+                'Swipe Photos',
+                style: TextStyle(
+                  color: Color(0xFF007AFF),
+                  fontWeight: FontWeight.w600,
+                  fontSize: 15,
+                  letterSpacing: -0.2,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
