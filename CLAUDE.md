@@ -2,6 +2,17 @@
 
 > Flutter photo-cleaning + app-subscription tracker. Subscription-based iOS + Android app. Swipe left/right on photos (keep/delete), AI groups blurry/duplicate/old photos, app spend dashboard.
 
+## 🔁 RESUMING A SESSION — READ FIRST
+
+If the user says "resume", "continue", or just keeps going on prior work:
+
+1. **Read `docs/NEXT_STEPS.md`** — the agreed work queue lives there
+2. Read the latest Notion Dev Log entry: `3594a228-bde2-81dd-aedf-c63699ae2154`
+3. Pick up at the next un-shipped item from the queue
+4. After each item: commit (one logical change per commit), push to `origin/main`, log to Notion Dev Log + Prompts page (`35a4a228-bde2-81ef-bd17-d371b05c0fb6`)
+
+The user is non-technical. Don't assume they know how to hot restart, source .zshrc, navigate Xcode panels, or use git. Hand-hold and offer the exact command.
+
 ## ⚡ Notion Auto-Documentation (MANDATORY — EVERY CHANGE)
 
 **After EVERY code change, Claude MUST log it to Notion using the Notion MCP.**

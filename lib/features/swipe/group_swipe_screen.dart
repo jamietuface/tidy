@@ -1,14 +1,18 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:photo_manager/photo_manager.dart';
 
 import '../../theme/app_theme.dart';
+import '../ai/group_counts_provider.dart';
 import 'group_type.dart';
+import 'photo_decisions_repository.dart';
 import 'photo_library_provider.dart';
 import 'widgets/photo_swipe_card.dart';
 
-class GroupSwipeScreen extends StatefulWidget {
+class GroupSwipeScreen extends ConsumerStatefulWidget {
   const GroupSwipeScreen({
     super.key,
     required this.type,
@@ -19,16 +23,16 @@ class GroupSwipeScreen extends StatefulWidget {
   final int photoCount;
 
   @override
-  State<GroupSwipeScreen> createState() => _GroupSwipeScreenState();
+  ConsumerState<GroupSwipeScreen> createState() => _GroupSwipeScreenState();
 }
 
-class _GroupSwipeScreenState extends State<GroupSwipeScreen>
+class _GroupSwipeScreenState extends ConsumerState<GroupSwipeScreen>
     with TickerProviderStateMixin {
   static const _commitThreshold = 100.0;
   static const _overlayDivisor = 150.0;
   static const _rotationDivisor = 800.0;
 
-  late final List<PhotoItem> _photos;
+  List<PhotoItem> _photos = const [];
   int _index = 0;
   int _kept = 0;
   int _deleted = 0;
@@ -52,8 +56,6 @@ class _GroupSwipeScreenState extends State<GroupSwipeScreen>
   @override
   void initState() {
     super.initState();
-    _photos = _mockGroupPhotos(widget.type, widget.photoCount);
-
     final flyCurve = CurvedAnimation(parent: _flyController, curve: Curves.easeOut);
     flyCurve.addListener(() {
       final p = flyCurve.value;
@@ -112,6 +114,7 @@ class _GroupSwipeScreenState extends State<GroupSwipeScreen>
     final targetX = keep ? width * 1.4 : -width * 1.4;
     _flyFrom = Offset(_dragX, _dragY);
     _flyTo = Offset(targetX, _dragY + 80);
+    final committed = _photos[_index];
     _flyController.forward(from: 0).then((_) {
       setState(() {
         if (keep) {
@@ -124,7 +127,26 @@ class _GroupSwipeScreenState extends State<GroupSwipeScreen>
         _dragY = 0;
         _animating = false;
       });
+      _recordWithSize(committed, keep);
     });
+  }
+
+  Future<void> _recordWithSize(PhotoItem item, bool keep) async {
+    int? sizeBytes;
+    try {
+      final file = await item.asset?.file;
+      sizeBytes = await file?.length();
+    } catch (_) {
+      sizeBytes = null;
+    }
+    if (!mounted) return;
+    await ref.read(photoDecisionsRepositoryProvider).record(
+          photoId: item.id,
+          decision: keep ? SwipeDecision.kept : SwipeDecision.deleted,
+          photoCreatedAt: item.asset?.createDateTime,
+          groupType: widget.type.name,
+          sizeBytes: sizeBytes,
+        );
   }
 
   Future<void> _confirmDeleteAll() async {
@@ -169,6 +191,26 @@ class _GroupSwipeScreenState extends State<GroupSwipeScreen>
     final cardHeight = size.height * 0.62;
     final cardWidth = size.width - 32;
 
+    // Sync the deck with the classifier results — only refill the list
+    // before the user has started swiping.
+    final assetsAsync = ref.watch(groupAssetsProvider(widget.type));
+    if (_index == 0 && _kept == 0 && _deleted == 0) {
+      final assets = assetsAsync.asData?.value ?? const <AssetEntity>[];
+      final next = assets.map(PhotoItem.fromAsset).toList();
+      if (next.length != _photos.length ||
+          (next.isNotEmpty &&
+              _photos.isNotEmpty &&
+              next.first.id != _photos.first.id)) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (!mounted) return;
+          setState(() => _photos = next);
+        });
+      }
+    }
+
+    final loading = assetsAsync.isLoading && _photos.isEmpty;
+    final empty = !loading && _photos.isEmpty;
+
     return Scaffold(
       backgroundColor: isDark ? Colors.black : AppColors.systemGray6,
       body: SafeArea(
@@ -176,40 +218,46 @@ class _GroupSwipeScreenState extends State<GroupSwipeScreen>
           children: [
             _Header(
               type: widget.type,
-              total: widget.photoCount,
+              total: _photos.length,
               isDark: isDark,
               onBack: () => context.pop(),
-              onDeleteAll: _isDone ? null : _confirmDeleteAll,
+              onDeleteAll: (_isDone || _photos.isEmpty)
+                  ? null
+                  : _confirmDeleteAll,
             ),
             const SizedBox(height: 12),
             _GroupChip(type: widget.type),
             const SizedBox(height: 16),
             Expanded(
               child: Center(
-                child: _isDone
-                    ? _Completion(
-                        kept: _kept,
-                        deleted: _deleted,
-                        isDark: isDark,
-                        onBack: () => context.pop(),
-                      )
-                    : SizedBox(
-                        width: cardWidth,
-                        height: cardHeight,
-                        child: _CardStack(
-                          photos: _photos,
-                          index: _index,
-                          dragX: _dragX,
-                          dragY: _dragY,
-                          onPanUpdate: _onPanUpdate,
-                          onPanEnd: _onPanEnd,
-                          overlayDivisor: _overlayDivisor,
-                          rotationDivisor: _rotationDivisor,
-                        ),
-                      ),
+                child: loading
+                    ? const CupertinoActivityIndicator()
+                    : empty
+                        ? _EmptyGroup(type: widget.type, isDark: isDark)
+                        : _isDone
+                            ? _Completion(
+                                kept: _kept,
+                                deleted: _deleted,
+                                isDark: isDark,
+                                onBack: () => context.pop(),
+                              )
+                            : SizedBox(
+                                width: cardWidth,
+                                height: cardHeight,
+                                child: _CardStack(
+                                  photos: _photos,
+                                  index: _index,
+                                  dragX: _dragX,
+                                  dragY: _dragY,
+                                  onPanUpdate: _onPanUpdate,
+                                  onPanEnd: _onPanEnd,
+                                  overlayDivisor: _overlayDivisor,
+                                  rotationDivisor: _rotationDivisor,
+                                ),
+                              ),
               ),
             ),
-            if (!_isDone)
+            if (!_isDone && !loading && !empty)
               Padding(
                 padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
                 child: _ActionRow(
@@ -236,16 +284,16 @@ class _GroupSwipeScreenState extends State<GroupSwipeScreen>
   void _onUndo() {
     if (_animating || _index == 0) return;
     HapticFeedback.selectionClick();
+    final undone = _photos[_index - 1];
     setState(() {
       _index--;
-      // We don't track which decision was last; decrement the larger bucket
-      // as a conservative undo. Real photo_manager wiring will track this properly.
       if (_kept >= _deleted && _kept > 0) {
         _kept--;
       } else if (_deleted > 0) {
         _deleted--;
       }
     });
+    ref.read(photoDecisionsRepositoryProvider).undo(undone.id);
   }
 }
 
@@ -661,21 +709,42 @@ class _Completion extends StatelessWidget {
   }
 }
 
-List<PhotoItem> _mockGroupPhotos(GroupType type, int count) {
-  final now = DateTime.now();
-  const months = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
-  ];
-  final sizes = [3.2, 1.1, 4.6, 2.8, 5.1, 3.7, 2.0, 0.8, 4.2, 6.5, 3.0, 1.9];
-  final seedPrefix = type.name;
-  return List.generate(count, (i) {
-    final d = now.subtract(Duration(days: i + 1));
-    return PhotoItem(
-      id: '${seedPrefix}_$i',
-      imageUrl: 'https://picsum.photos/seed/${seedPrefix}_$i/600/800',
-      label: '${months[d.month - 1]} ${d.day}, ${d.year}',
-      size: '${sizes[i % sizes.length].toStringAsFixed(1)} MB',
+class _EmptyGroup extends StatelessWidget {
+  const _EmptyGroup({required this.type, required this.isDark});
+  final GroupType type;
+  final bool isDark;
+
+  @override
+  Widget build(BuildContext context) {
+    final fg = isDark ? Colors.white : Colors.black;
+    return Padding(
+      padding: const EdgeInsets.all(40),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(type.icon, size: 56, color: type.color.withValues(alpha: 0.5)),
+          const SizedBox(height: 18),
+          Text(
+            'No ${type.shortLabel.toLowerCase()} photos',
+            style: TextStyle(
+              color: fg,
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.3,
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            "We didn't find any ${type.shortLabel.toLowerCase()} photos in the first batch we scanned.",
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              color: fg.withValues(alpha: 0.55),
+              fontSize: 14,
+              height: 1.4,
+            ),
+          ),
+        ],
+      ),
     );
-  });
+  }
 }

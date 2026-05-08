@@ -1,0 +1,46 @@
+{
+  "project_info": {
+    "project_number": "798629895187",
+    "project_id": "tidy-73cc3",
+    "storage_bucket": "tidy-73cc3.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:798629895187:android:1154d6bdb65cd2df29b3e6",
+        "android_client_info": {
+          "package_name": "com.tidy.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "798629895187-b4vlg1djqvpv9tca9pm142le28thhdh2.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyD8N-ctfK4fYiIoeqJaECiI___eci7jFBw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "798629895187-b4vlg1djqvpv9tca9pm142le28thhdh2.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "798629895187-qv0plku9h8g689ps383fr7a1tt7t8rrq.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.tidy.app"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

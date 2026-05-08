@@ -18,11 +18,28 @@ dependencies:
   # Routing
   go_router: ^14.2.7
 
-  # Auth providers (Firebase deferred to v1.3 — not needed for v1.0 UI)
+  # Firebase 3.x line (Firebase iOS SDK 11.x). Requires Xcode 15.2+ / iOS 13+.
+  firebase_core: ^3.6.0
+  firebase_auth: ^5.3.1
+  cloud_firestore: ^5.4.4
+  firebase_messaging: ^15.1.3
+  firebase_analytics: ^11.3.3
+  firebase_remote_config: ^5.1.3
+
+  # Auth providers
   sign_in_with_apple: ^6.1.2
+  google_sign_in: ^6.2.1
+
+  # Notifications (subscription renewal alerts)
+  flutter_local_notifications: ^17.2.2
+  permission_handler: ^11.3.1
 
   # Photos
   photo_manager: ^3.6.0
+
+  # On-device AI photo grouping (heuristic classifiers — no ML model)
+  image: ^4.3.0
+  crypto: ^3.0.5
 
   # Payments
   in_app_purchase: ^3.2.0

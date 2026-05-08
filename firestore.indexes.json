@@ -1,0 +1,37 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "subscriptions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "renewsAt", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "subscriptions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "monthlyCost", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "photo_decisions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "decision", "order": "ASCENDING" },
+        { "fieldPath": "decidedAt", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "photo_decisions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "groupType", "order": "ASCENDING" },
+        { "fieldPath": "decidedAt", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

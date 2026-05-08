@@ -39,6 +39,9 @@ class _SwipeCardScreenState extends ConsumerState<SwipeCardScreen>
   @override
   void initState() {
     super.initState();
+    // Load real photos from the device library.
+    Future.microtask(() => ref.read(photoLibraryProvider.notifier).load());
+
     final flyCurve = CurvedAnimation(parent: _flyController, curve: Curves.easeOut);
     flyCurve.addListener(() {
       final p = flyCurve.value;
@@ -154,28 +157,38 @@ class _SwipeCardScreenState extends ConsumerState<SwipeCardScreen>
             const SizedBox(height: 16),
             Expanded(
               child: Center(
-                child: state.isDone
-                    ? _DoneState(
-                        kept: state.kept.length,
-                        deleted: state.deleted.length,
-                        isDark: isDark,
-                      )
-                    : SizedBox(
-                        width: cardWidth,
-                        height: cardHeight,
-                        child: _CardStack(
-                          state: state,
-                          dragX: _dragX,
-                          dragY: _dragY,
-                          onPanUpdate: _onPanUpdate,
-                          onPanEnd: _onPanEnd,
-                          overlayDivisor: _overlayDivisor,
-                          rotationDivisor: _rotationDivisor,
-                        ),
-                      ),
+                child: state.loading
+                    ? const CupertinoActivityIndicator()
+                    : state.permission == PhotoPermission.denied
+                        ? _PermissionDenied(
+                            isDark: isDark,
+                            onSettings: () => ref
+                                .read(photoLibraryProvider.notifier)
+                                .openSettings(),
+                          )
+                        : state.isDone
+                            ? _DoneState(
+                                kept: state.kept.length,
+                                deleted: state.deleted.length,
+                                isDark: isDark,
+                              )
+                            : SizedBox(
+                                width: cardWidth,
+                                height: cardHeight,
+                                child: _CardStack(
+                                  state: state,
+                                  dragX: _dragX,
+                                  dragY: _dragY,
+                                  onPanUpdate: _onPanUpdate,
+                                  onPanEnd: _onPanEnd,
+                                  overlayDivisor: _overlayDivisor,
+                                  rotationDivisor: _rotationDivisor,
+                                ),
+                              ),
               ),
             ),
-            if (!state.isDone)
+            if (!state.isDone && !state.loading &&
+                state.permission != PhotoPermission.denied)
               Padding(
                 padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
                 child: _ActionRow(
@@ -504,28 +517,110 @@ class _DoneState extends StatelessWidget {
       child: Column(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Container(
-            width: 88, height: 88,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: AppColors.systemGreen.withValues(alpha: 0.15),
-            ),
-            child: const Icon(CupertinoIcons.checkmark_alt, color: AppColors.systemGreen, size: 44),
+          const Icon(
+            CupertinoIcons.checkmark_seal_fill,
+            color: AppColors.systemGreen,
+            size: 64,
           ),
           const SizedBox(height: 20),
           Text(
-            'All done',
+            "You're all caught up",
             style: TextStyle(
               color: fg,
-              fontSize: 24,
+              fontSize: 22,
               fontWeight: FontWeight.w700,
               letterSpacing: -0.4,
             ),
+            textAlign: TextAlign.center,
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 6),
           Text(
-            '$kept kept · $deleted to delete',
-            style: TextStyle(color: fg.withValues(alpha: 0.55), fontSize: 15),
+            '$kept kept · $deleted deleted',
+            style: TextStyle(
+              color: fg.withValues(alpha: 0.55),
+              fontSize: 13,
+              fontWeight: FontWeight.w500,
+              letterSpacing: -0.1,
+            ),
+          ),
+          const SizedBox(height: 28),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.systemBlue,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+              textStyle: const TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                letterSpacing: -0.2,
+              ),
+            ),
+            child: const Text('Back to Home'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _PermissionDenied extends StatelessWidget {
+  const _PermissionDenied({required this.isDark, required this.onSettings});
+  final bool isDark;
+  final VoidCallback onSettings;
+
+  @override
+  Widget build(BuildContext context) {
+    final fg = isDark ? Colors.white : Colors.black;
+    return Padding(
+      padding: const EdgeInsets.all(40),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(CupertinoIcons.photo, size: 56,
+              color: fg.withValues(alpha: 0.25)),
+          const SizedBox(height: 20),
+          Text(
+            'Photo access needed',
+            style: TextStyle(
+              color: fg,
+              fontSize: 20,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.3,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Allow Tidy to access your photos in Settings.',
+            style: TextStyle(
+              color: fg.withValues(alpha: 0.55),
+              fontSize: 15,
+              height: 1.4,
+            ),
+            textAlign: TextAlign.center,
+          ),
+          const SizedBox(height: 28),
+          GestureDetector(
+            onTap: onSettings,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 13),
+              decoration: BoxDecoration(
+                color: AppColors.systemBlue,
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: const Text(
+                'Open Settings',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
           ),
         ],
       ),
