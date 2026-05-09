@@ -51,6 +51,32 @@ class SubscriptionsRepository {
         .doc(id)
         .delete();
   }
+
+  Future<void> update({
+    required String uid,
+    required String id,
+    required String name,
+    required double price,
+    required String currency,
+    DateTime? lastUsed,
+    String? iconName,
+    String? colorHex,
+  }) async {
+    await _firestore
+        .collection('users')
+        .doc(uid)
+        .collection('subscriptions')
+        .doc(id)
+        .set({
+      'name': name,
+      'price': price,
+      'currency': currency,
+      'updatedAt': FieldValue.serverTimestamp(),
+      if (lastUsed != null) 'lastUsed': Timestamp.fromDate(lastUsed),
+      if (iconName != null) 'iconName': iconName,
+      if (colorHex != null) 'colorHex': colorHex,
+    }, SetOptions(merge: true));
+  }
 }
 
 final subscriptionsRepositoryProvider = Provider<SubscriptionsRepository>(

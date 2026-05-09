@@ -58,7 +58,7 @@ class SwipeScreen extends ConsumerWidget {
                       CupertinoIcons.slider_horizontal_3,
                       color: Colors.white,
                     ),
-                    onPressed: () {},
+                    onPressed: () => context.push('/settings'),
                   ),
                 ],
               ),

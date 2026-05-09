@@ -10,11 +10,20 @@ import '../swipe/group_type.dart';
 /// All entry points are pure functions — safe to call inside compute().
 
 /// Variance-of-Laplacian threshold below which a photo is considered blurry.
-/// Calibrated for 50×50 thumbnails sampled from typical phone photos.
-const _blurThreshold = 80.0;
+/// Lowered from 80 → 60 to catch more legit blurs from typical phone shots
+/// after testing on the simulator's seed images.
+const _blurThreshold = 60.0;
+
+/// Sampled thumbnail dimension for blur detection (was 50 — bumped to 100
+/// for more pixels in the Laplacian variance calculation).
+const _blurSampleSize = 100;
 
 /// Photo created [olderThanYears] years ago counts as Old.
 const _olderThanYears = 2;
+
+/// Hamming distance threshold for dHash perceptual duplicates. ≤ this many
+/// bits differing between two 64-bit hashes counts as a duplicate.
+const _dHashDuplicateThreshold = 5;
 
 /// Common iOS screen pixel resolutions (portrait). If the image dimensions
 /// match these exactly, we treat it as a screenshot. We also fall back to
@@ -77,21 +86,38 @@ GroupResults classifyAll(List<PhotoSample> samples) {
   final old = <String>{};
   final duplicates = <String>{};
 
-  // Bucket by content hash to find duplicates (≥ 2 photos sharing a hash).
-  final byHash = <String, List<String>>{};
-  final cutoff = DateTime.now().subtract(const Duration(days: 365 * _olderThanYears));
+  // For duplicate detection: keep both an exact-bytes bucket (MD5) and a
+  // perceptual bucket (dHash). Either match → duplicate.
+  final byMd5 = <String, List<String>>{};
+  final dHashes = <(String id, int hash)>[];
+
+  final cutoff = DateTime.now()
+      .subtract(const Duration(days: 365 * _olderThanYears));
 
   for (final s in samples) {
     if (_isBlurry(s.thumbBytes)) blurry.add(s.id);
     if (_isScreenshot(s.width, s.height)) screenshots.add(s.id);
     if (s.createdAt.isBefore(cutoff)) old.add(s.id);
 
-    final hash = crypto.md5.convert(s.headBytes).toString();
-    byHash.putIfAbsent(hash, () => <String>[]).add(s.id);
+    final md5 = crypto.md5.convert(s.headBytes).toString();
+    byMd5.putIfAbsent(md5, () => <String>[]).add(s.id);
+
+    final perceptual = _dHash(s.thumbBytes);
+    if (perceptual != null) dHashes.add((s.id, perceptual));
   }
 
-  for (final ids in byHash.values) {
+  for (final ids in byMd5.values) {
     if (ids.length >= 2) duplicates.addAll(ids);
+  }
+  // Pairwise dHash compare. O(n²) but capped by classify budget upstream.
+  for (var i = 0; i < dHashes.length; i++) {
+    for (var j = i + 1; j < dHashes.length; j++) {
+      final dist = _hamming(dHashes[i].$2, dHashes[j].$2);
+      if (dist <= _dHashDuplicateThreshold) {
+        duplicates.add(dHashes[i].$1);
+        duplicates.add(dHashes[j].$1);
+      }
+    }
   }
 
   return GroupResults({
@@ -102,12 +128,41 @@ GroupResults classifyAll(List<PhotoSample> samples) {
   });
 }
 
-/// Variance of the Laplacian over a 50×50 sample. Low variance = low edge
-/// energy = blurry image.
+/// dHash perceptual hash: downsample to 9×8 grayscale, compare adjacent
+/// pixels in each row → 64-bit signature.
+int? _dHash(Uint8List bytes) {
+  final decoded = img.decodeImage(bytes);
+  if (decoded == null) return null;
+  final gray = img.grayscale(img.copyResize(decoded, width: 9, height: 8));
+  var hash = 0;
+  for (var y = 0; y < 8; y++) {
+    for (var x = 0; x < 8; x++) {
+      final left = gray.getPixel(x, y).luminance;
+      final right = gray.getPixel(x + 1, y).luminance;
+      if (left < right) {
+        hash |= 1 << (y * 8 + x);
+      }
+    }
+  }
+  return hash;
+}
+
+int _hamming(int a, int b) {
+  var x = a ^ b;
+  var count = 0;
+  while (x != 0) {
+    count += x & 1;
+    x >>= 1;
+  }
+  return count;
+}
+
+/// Variance of the Laplacian. Low variance = low edge energy = blurry image.
 bool _isBlurry(Uint8List thumbBytes) {
   final decoded = img.decodeImage(thumbBytes);
   if (decoded == null) return false;
-  final gray = img.grayscale(img.copyResize(decoded, width: 50, height: 50));
+  final gray = img.grayscale(img.copyResize(
+      decoded, width: _blurSampleSize, height: _blurSampleSize));
 
   // Compute |center − neighbour| differences in a 4-neighbourhood and take
   // their variance (cheap proxy for variance-of-Laplacian).

@@ -8,10 +8,10 @@ import 'package:photo_manager/photo_manager.dart';
 import '../swipe/group_type.dart';
 import 'photo_classifier.dart';
 
-/// Hard cap on how many photos we classify in a single pass. 200 keeps
-/// the worst-case wall-clock under ~10s on an iPhone 15 simulator and
-/// keeps Isolate payload reasonable.
-const _classifyBudget = 200;
+/// Hard cap on how many photos we classify in a single pass. 500 covers
+/// most real photo libraries; the dHash O(n²) duplicate compare is the
+/// main cost driver but stays comfortably under 1s for n=500 in an Isolate.
+const _classifyBudget = 500;
 
 @immutable
 class GroupCounts {

@@ -1,0 +1,72 @@
+{
+  "identifier" : "tidy",
+  "nonRenewingSubscriptions" : [],
+  "products" : [],
+  "settings" : {
+    "_compatibilityTimeRate" : 1,
+    "_locale" : "en_GB",
+    "_storefront" : "GBR",
+    "_storeKitErrors" : []
+  },
+  "subscriptionGroups" : [
+    {
+      "id" : "tidy_pro_group",
+      "localizations" : [
+        {
+          "description" : "Tidy Pro subscription",
+          "displayName" : "Tidy Pro",
+          "locale" : "en_GB"
+        }
+      ],
+      "name" : "Tidy Pro",
+      "subscriptions" : [
+        {
+          "adHocOffers" : [],
+          "codeOffers" : [],
+          "displayPrice" : "3.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "tidy_pro_monthly",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Unlimited swipes, AI grouping, app spend tracker",
+              "displayName" : "Tidy Pro Monthly",
+              "locale" : "en_GB"
+            }
+          ],
+          "productID" : "tidy_pro_monthly",
+          "recurringSubscriptionPeriod" : "P1M",
+          "referenceName" : "Tidy Pro Monthly",
+          "subscriptionGroupID" : "tidy_pro_group",
+          "type" : "RecurringSubscription"
+        },
+        {
+          "adHocOffers" : [],
+          "codeOffers" : [],
+          "displayPrice" : "23.99",
+          "familyShareable" : false,
+          "groupNumber" : 1,
+          "internalID" : "tidy_pro_annual",
+          "introductoryOffer" : null,
+          "localizations" : [
+            {
+              "description" : "Unlimited swipes, AI grouping, app spend tracker. Save 50%.",
+              "displayName" : "Tidy Pro Annual",
+              "locale" : "en_GB"
+            }
+          ],
+          "productID" : "tidy_pro_annual",
+          "recurringSubscriptionPeriod" : "P1Y",
+          "referenceName" : "Tidy Pro Annual",
+          "subscriptionGroupID" : "tidy_pro_group",
+          "type" : "RecurringSubscription"
+        }
+      ]
+    }
+  ],
+  "version" : {
+    "major" : 4,
+    "minor" : 0
+  }
+}

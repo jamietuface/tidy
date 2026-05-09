@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../services/auth_service.dart';
 import '../../theme/app_theme.dart';
+import 'subscription.dart';
 import 'subscriptions_repository.dart';
 
 const _iconChoices = <String, IconData>{
@@ -31,17 +32,18 @@ const _colorChoices = <String>[
 
 const _currencies = ['GBP', 'USD', 'EUR'];
 
-Future<void> showAddSubscriptionSheet(BuildContext context) {
+Future<void> showAddSubscriptionSheet(BuildContext context, {Subscription? editing}) {
   return showModalBottomSheet<void>(
     context: context,
     isScrollControlled: true,
     backgroundColor: Colors.transparent,
-    builder: (_) => const AddSubscriptionSheet(),
+    builder: (_) => AddSubscriptionSheet(editing: editing),
   );
 }
 
 class AddSubscriptionSheet extends ConsumerStatefulWidget {
-  const AddSubscriptionSheet({super.key});
+  const AddSubscriptionSheet({super.key, this.editing});
+  final Subscription? editing;
 
   @override
   ConsumerState<AddSubscriptionSheet> createState() =>
@@ -49,14 +51,29 @@ class AddSubscriptionSheet extends ConsumerStatefulWidget {
 }
 
 class _AddSubscriptionSheetState extends ConsumerState<AddSubscriptionSheet> {
-  final _name = TextEditingController();
-  final _price = TextEditingController();
-  String _currency = 'GBP';
-  DateTime _lastUsed = DateTime.now();
-  String _iconName = 'app';
-  String _colorHex = '#007AFF';
+  late final TextEditingController _name;
+  late final TextEditingController _price;
+  late String _currency;
+  late DateTime _lastUsed;
+  late String _iconName;
+  late String _colorHex;
   bool _busy = false;
   String? _error;
+
+  bool get _isEditing => widget.editing != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final e = widget.editing;
+    _name = TextEditingController(text: e?.name ?? '');
+    _price = TextEditingController(
+        text: e?.price != null ? e!.price.toStringAsFixed(2) : '');
+    _currency = e?.currency ?? 'GBP';
+    _lastUsed = e?.lastUsed ?? DateTime.now();
+    _iconName = e?.iconName ?? 'app';
+    _colorHex = e?.colorHex ?? '#007AFF';
+  }
 
   @override
   void dispose() {
@@ -82,15 +99,29 @@ class _AddSubscriptionSheetState extends ConsumerState<AddSubscriptionSheet> {
       _error = null;
     });
     try {
-      await ref.read(subscriptionsRepositoryProvider).add(
-            uid: user.uid,
-            name: _name.text.trim(),
-            price: double.parse(_price.text.trim()),
-            currency: _currency,
-            lastUsed: _lastUsed,
-            iconName: _iconName,
-            colorHex: _colorHex,
-          );
+      final repo = ref.read(subscriptionsRepositoryProvider);
+      if (_isEditing) {
+        await repo.update(
+          uid: user.uid,
+          id: widget.editing!.id,
+          name: _name.text.trim(),
+          price: double.parse(_price.text.trim()),
+          currency: _currency,
+          lastUsed: _lastUsed,
+          iconName: _iconName,
+          colorHex: _colorHex,
+        );
+      } else {
+        await repo.add(
+          uid: user.uid,
+          name: _name.text.trim(),
+          price: double.parse(_price.text.trim()),
+          currency: _currency,
+          lastUsed: _lastUsed,
+          iconName: _iconName,
+          colorHex: _colorHex,
+        );
+      }
       if (!mounted) return;
       HapticFeedback.mediumImpact();
       Navigator.of(context).pop();
@@ -178,7 +209,7 @@ class _AddSubscriptionSheetState extends ConsumerState<AddSubscriptionSheet> {
                     ),
                     const Spacer(),
                     Text(
-                      'Add Subscription',
+                      _isEditing ? 'Edit Subscription' : 'Add Subscription',
                       style: TextStyle(
                         color: fg,
                         fontSize: 17,

@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../theme/app_theme.dart';
+import 'photo_deletion_service.dart';
 import 'photo_library_provider.dart';
 import 'widgets/photo_swipe_card.dart';
 
@@ -170,6 +171,7 @@ class _SwipeCardScreenState extends ConsumerState<SwipeCardScreen>
                             ? _DoneState(
                                 kept: state.kept.length,
                                 deleted: state.deleted.length,
+                                deletedIds: state.deleted,
                                 isDark: isDark,
                               )
                             : SizedBox(
@@ -503,15 +505,45 @@ class _CircleAction extends StatelessWidget {
   }
 }
 
-class _DoneState extends StatelessWidget {
-  const _DoneState({required this.kept, required this.deleted, required this.isDark});
+class _DoneState extends ConsumerStatefulWidget {
+  const _DoneState({
+    required this.kept,
+    required this.deleted,
+    required this.deletedIds,
+    required this.isDark,
+  });
   final int kept;
   final int deleted;
+  final List<String> deletedIds;
   final bool isDark;
 
   @override
+  ConsumerState<_DoneState> createState() => _DoneStateState();
+}
+
+class _DoneStateState extends ConsumerState<_DoneState> {
+  bool _busy = false;
+  int? _justDeleted;
+
+  Future<void> _deleteFromLibrary() async {
+    if (_busy || widget.deletedIds.isEmpty) return;
+    setState(() => _busy = true);
+    final actuallyDeleted = await ref
+        .read(photoDeletionServiceProvider)
+        .deleteFromLibrary(widget.deletedIds);
+    if (!mounted) return;
+    setState(() {
+      _busy = false;
+      _justDeleted = actuallyDeleted.length;
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final fg = isDark ? Colors.white : Colors.black;
+    final fg = widget.isDark ? Colors.white : Colors.black;
+    final pendingDelete = widget.deletedIds.length;
+    final cleared = _justDeleted != null;
+
     return Padding(
       padding: const EdgeInsets.all(40),
       child: Column(
@@ -535,20 +567,58 @@ class _DoneState extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           Text(
-            '$kept kept · $deleted deleted',
+            cleared
+                ? '${widget.kept} kept · $_justDeleted removed from library'
+                : '${widget.kept} kept · ${widget.deleted} marked for delete',
             style: TextStyle(
               color: fg.withValues(alpha: 0.55),
               fontSize: 13,
               fontWeight: FontWeight.w500,
               letterSpacing: -0.1,
             ),
+            textAlign: TextAlign.center,
           ),
           const SizedBox(height: 28),
+          if (pendingDelete > 0 && !cleared)
+            FilledButton.icon(
+              onPressed: _busy ? null : _deleteFromLibrary,
+              icon: _busy
+                  ? const SizedBox(
+                      width: 16,
+                      height: 16,
+                      child: CupertinoActivityIndicator(color: Colors.white),
+                    )
+                  : const Icon(CupertinoIcons.trash_fill, size: 18),
+              label: Text('Delete $pendingDelete from library'),
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.systemRed,
+                foregroundColor: Colors.white,
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                textStyle: const TextStyle(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: -0.2,
+                ),
+              ),
+            ),
+          if (pendingDelete > 0 && !cleared) const SizedBox(height: 12),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(),
             style: FilledButton.styleFrom(
-              backgroundColor: AppColors.systemBlue,
-              foregroundColor: Colors.white,
+              backgroundColor:
+                  pendingDelete > 0 && !cleared ? Colors.transparent : AppColors.systemBlue,
+              foregroundColor: pendingDelete > 0 && !cleared
+                  ? AppColors.systemBlue
+                  : Colors.white,
+              side: pendingDelete > 0 && !cleared
+                  ? BorderSide(
+                      color: AppColors.systemBlue.withValues(alpha: 0.5),
+                      width: 1,
+                    )
+                  : null,
               padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(14),

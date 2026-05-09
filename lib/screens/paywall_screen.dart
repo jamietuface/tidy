@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../features/auth/user_repository.dart';
+import '../features/paywall/iap_service.dart';
 import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
 
@@ -20,13 +23,67 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
   _Plan _selected = _Plan.annual;
   bool _busy = false;
   bool _success = false;
+  StreamSubscription<IapStatus>? _statusSub;
+
+  @override
+  void initState() {
+    super.initState();
+    _statusSub = ref.read(iapServiceProvider).status.listen(_onIapStatus);
+  }
+
+  @override
+  void dispose() {
+    _statusSub?.cancel();
+    super.dispose();
+  }
+
+  void _onIapStatus(IapStatus status) async {
+    if (!mounted) return;
+    switch (status) {
+      case IapPending():
+        setState(() => _busy = true);
+      case IapSuccess():
+        HapticFeedback.heavyImpact();
+        setState(() {
+          _busy = false;
+          _success = true;
+        });
+        await Future.delayed(const Duration(milliseconds: 1600));
+        if (!mounted) return;
+        Navigator.of(context).pop();
+      case IapCanceled() || IapError():
+        setState(() => _busy = false);
+      case IapIdle():
+        break;
+    }
+  }
 
   Future<void> _subscribe() async {
     if (_busy) return;
     final user = ref.read(authStateProvider).asData?.value;
     if (user == null) return;
-    setState(() => _busy = true);
     HapticFeedback.mediumImpact();
+
+    final products = await ref.read(iapProductsProvider.future);
+    final wantedId = _selected == _Plan.annual
+        ? annualProductId
+        : monthlyProductId;
+    final product = products.where((p) => p.id == wantedId).firstOrNull;
+
+    if (product != null) {
+      setState(() => _busy = true);
+      try {
+        await ref.read(iapServiceProvider).buy(product);
+      } catch (_) {
+        if (mounted) setState(() => _busy = false);
+      }
+      // Real-flow result is handled in _onIapStatus.
+      return;
+    }
+
+    // No StoreKit products configured (App Store Connect or .storekit not
+    // wired) — fall back to mock upgrade so dev still works.
+    setState(() => _busy = true);
     try {
       await ref.read(userRepositoryProvider).setPlan(
             user.uid,
@@ -42,6 +99,13 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
     } catch (_) {
       if (mounted) setState(() => _busy = false);
     }
+  }
+
+  Future<void> _restore() async {
+    HapticFeedback.selectionClick();
+    try {
+      await ref.read(iapServiceProvider).restore();
+    } catch (_) {/* status stream handles UI */}
   }
 
   @override
@@ -103,11 +167,11 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
                         ),
                         const SizedBox(height: 14),
                         TextButton(
-                          onPressed: () {},
+                          onPressed: _restore,
                           child: Text(
                             'Restore Purchase',
                             style: TextStyle(
-                              color: Colors.white.withValues(alpha: 0.35),
+                              color: Colors.white.withValues(alpha: 0.45),
                               fontSize: 13,
                               fontWeight: FontWeight.w500,
                               letterSpacing: -0.1,
