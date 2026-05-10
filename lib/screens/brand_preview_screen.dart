@@ -53,6 +53,17 @@ class BrandPreviewScreen extends ConsumerWidget {
                 letterSpacing: -0.2,
               ),
             ),
+            const SizedBox(height: 8),
+            Text(
+              'Logo should match docs/design_refs/stage_1A/01_light_logo_brand_board.png',
+              style: TextStyle(
+                color: brand.textMuted,
+                fontSize: 12,
+                fontWeight: FontWeight.w400,
+                fontFeatures: const [FontFeature.tabularFigures()],
+                height: 1.4,
+              ),
+            ),
             const SizedBox(height: 28),
             const _ThemeModePicker(),
             const SizedBox(height: 36),

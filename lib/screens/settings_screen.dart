@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../core/theme/tidy_brand_palette.dart';
 import '../core/theme/tidy_theme_mode_controller.dart';
 import '../features/auth/user_repository.dart';
 import '../services/auth_service.dart';
@@ -20,21 +21,25 @@ class SettingsScreen extends ConsumerWidget {
     final email = user?.email;
     final isAnon = user?.isAnonymous ?? true;
     final themePref = ref.watch(tidyThemeModeControllerProvider);
+    final brand = context.tidyBrand;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: brand.background,
       body: Stack(
         children: [
-          const Positioned.fill(
-            child: IgnorePointer(child: _GlowHalos()),
-          ),
+          // Halos only on dark — they vanish on light to keep the page clean.
+          if (isDark)
+            const Positioned.fill(
+              child: IgnorePointer(child: _GlowHalos()),
+            ),
           CustomScrollView(
             slivers: [
               SliverAppBar.large(
-                title: const Text(
+                title: Text(
                   'Settings',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: brand.textPrimary,
                     fontWeight: FontWeight.w700,
                     letterSpacing: -0.4,
                   ),
@@ -42,9 +47,12 @@ class SettingsScreen extends ConsumerWidget {
                 backgroundColor: Colors.transparent,
                 surfaceTintColor: Colors.transparent,
                 scrolledUnderElevation: 0,
-                foregroundColor: Colors.white,
+                foregroundColor: brand.textPrimary,
                 leading: IconButton(
-                  icon: const Icon(CupertinoIcons.chevron_back, color: Colors.white),
+                  icon: Icon(
+                    CupertinoIcons.chevron_back,
+                    color: brand.textPrimary,
+                  ),
                   onPressed: () => context.pop(),
                 ),
               ),
@@ -61,7 +69,7 @@ class SettingsScreen extends ConsumerWidget {
                           icon: CupertinoIcons.person_fill,
                           color: AppColors.systemBlue,
                         ),
-                        _Divider(),
+                        const _Divider(),
                         _SettingRow(
                           label: 'Plan',
                           icon: isPro
@@ -73,7 +81,7 @@ class SettingsScreen extends ConsumerWidget {
                           trailing: _PlanBadge(isPro: isPro),
                           onTap: isPro ? null : () => context.push('/paywall'),
                         ),
-                        _Divider(),
+                        const _Divider(),
                         _SettingRow(
                           label: 'Sign out',
                           icon: CupertinoIcons.square_arrow_right,
@@ -106,7 +114,7 @@ class SettingsScreen extends ConsumerWidget {
                           trailing: _ValueLabel(text: themePref.displayLabel),
                           onTap: () => _openThemeSheet(context, ref),
                         ),
-                        _Divider(),
+                        const _Divider(),
                         _SettingRow(
                           label: 'Brand Preview',
                           icon: CupertinoIcons.sparkles,
@@ -139,7 +147,7 @@ class SettingsScreen extends ConsumerWidget {
                           color: AppColors.systemTeal,
                           onTap: () => _open('https://tidy.app/privacy'),
                         ),
-                        _Divider(),
+                        const _Divider(),
                         _SettingRow(
                           label: 'Terms of Service',
                           icon: CupertinoIcons.doc_text_fill,
@@ -181,7 +189,7 @@ class SettingsScreen extends ConsumerWidget {
     await showModalBottomSheet<void>(
       context: context,
       backgroundColor: Colors.transparent,
-      barrierColor: Colors.black.withValues(alpha: 0.55),
+      barrierColor: Colors.black.withValues(alpha: 0.45),
       isScrollControlled: false,
       builder: (sheetCtx) {
         return _ThemeSheet(current: current);
@@ -190,145 +198,8 @@ class SettingsScreen extends ConsumerWidget {
   }
 }
 
-class _ThemeSheet extends ConsumerWidget {
-  const _ThemeSheet({required this.current});
-  final TidyThemePreference current;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return SafeArea(
-      top: false,
-      child: Container(
-        margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
-        decoration: BoxDecoration(
-          color: const Color(0xFF11151D),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(
-            color: Colors.white.withValues(alpha: 0.10),
-            width: 0.5,
-          ),
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(20),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-                child: Row(
-                  children: [
-                    const Expanded(
-                      child: Text(
-                        'Appearance',
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 17,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: -0.2,
-                        ),
-                      ),
-                    ),
-                    GestureDetector(
-                      onTap: () => Navigator.of(context).pop(),
-                      behavior: HitTestBehavior.opaque,
-                      child: Container(
-                        width: 28,
-                        height: 28,
-                        alignment: Alignment.center,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          color: Colors.white.withValues(alpha: 0.10),
-                        ),
-                        child: const Icon(
-                          CupertinoIcons.xmark,
-                          color: Colors.white,
-                          size: 13,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              for (final pref in TidyThemePreference.values)
-                _ThemeSheetRow(
-                  pref: pref,
-                  selected: pref == current,
-                  onTap: () async {
-                    await ref
-                        .read(tidyThemeModeControllerProvider.notifier)
-                        .set(pref);
-                    if (context.mounted) Navigator.of(context).pop();
-                  },
-                ),
-              const SizedBox(height: 8),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _ThemeSheetRow extends StatelessWidget {
-  const _ThemeSheetRow({
-    required this.pref,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final TidyThemePreference pref;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      behavior: HitTestBehavior.opaque,
-      onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-        child: Row(
-          children: [
-            Expanded(
-              child: Text(
-                pref.displayLabel,
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w400,
-                  letterSpacing: -0.2,
-                ),
-              ),
-            ),
-            if (selected)
-              const Icon(
-                CupertinoIcons.checkmark_alt,
-                color: AppColors.systemBlue,
-                size: 18,
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ValueLabel extends StatelessWidget {
-  const _ValueLabel({required this.text});
-  final String text;
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      text,
-      style: TextStyle(
-        color: Colors.white.withValues(alpha: 0.50),
-        fontSize: 15,
-        fontWeight: FontWeight.w400,
-      ),
-    );
-  }
-}
+// ---------------------------------------------------------------------------
+// Halos — only painted in dark mode.
 
 class _GlowHalos extends StatelessWidget {
   const _GlowHalos();
@@ -372,18 +243,22 @@ class _GlowHalos extends StatelessWidget {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Section label.
+
 class _SectionLabel extends StatelessWidget {
   const _SectionLabel(this.text);
   final String text;
 
   @override
   Widget build(BuildContext context) {
+    final brand = context.tidyBrand;
     return Padding(
       padding: const EdgeInsets.only(left: 4),
       child: Text(
         text,
         style: TextStyle(
-          color: Colors.white.withValues(alpha: 0.50),
+          color: brand.textMuted,
           fontSize: 12,
           fontWeight: FontWeight.w500,
           letterSpacing: 0.8,
@@ -393,20 +268,36 @@ class _SectionLabel extends StatelessWidget {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Card container — opaque white in light, translucent glass in dark
+// (preserves the existing metallic-dark feel).
+
 class _GlassCard extends StatelessWidget {
   const _GlassCard({required this.children});
   final List<Widget> children;
 
   @override
   Widget build(BuildContext context) {
+    final brand = context.tidyBrand;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.06),
+        color: isDark ? Colors.white.withValues(alpha: 0.06) : brand.surface,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: Colors.white.withValues(alpha: 0.10),
+          color:
+              isDark ? Colors.white.withValues(alpha: 0.10) : brand.cardBorder,
           width: 0.5,
         ),
+        boxShadow: isDark
+            ? const []
+            : [
+                BoxShadow(
+                  color: const Color(0xFF1A2540).withValues(alpha: 0.04),
+                  blurRadius: 12,
+                  offset: const Offset(0, 2),
+                ),
+              ],
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(16),
@@ -416,16 +307,28 @@ class _GlassCard extends StatelessWidget {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Row divider.
+
 class _Divider extends StatelessWidget {
+  const _Divider();
+
   @override
   Widget build(BuildContext context) {
+    final brand = context.tidyBrand;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
       height: 0.5,
       margin: const EdgeInsets.only(left: 60),
-      color: Colors.white.withValues(alpha: 0.06),
+      color: isDark
+          ? Colors.white.withValues(alpha: 0.06)
+          : brand.cardBorderSubtle,
     );
   }
 }
+
+// ---------------------------------------------------------------------------
+// Single settings row — icon badge + label + optional trailing.
 
 class _SettingRow extends StatelessWidget {
   const _SettingRow({
@@ -446,6 +349,16 @@ class _SettingRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final brand = context.tidyBrand;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final badgeGradient = isDark
+        ? [color.withValues(alpha: 0.30), color.withValues(alpha: 0.10)]
+        : [color.withValues(alpha: 0.20), color.withValues(alpha: 0.08)];
+    final badgeBorder = isDark
+        ? Colors.white.withValues(alpha: 0.08)
+        : color.withValues(alpha: 0.28);
+
     return GestureDetector(
       behavior: HitTestBehavior.opaque,
       onTap: onTap,
@@ -459,16 +372,10 @@ class _SettingRow extends StatelessWidget {
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [
-                  color.withValues(alpha: 0.30),
-                  color.withValues(alpha: 0.10),
-                ],
+                colors: badgeGradient,
               ),
               borderRadius: BorderRadius.circular(9),
-              border: Border.all(
-                color: Colors.white.withValues(alpha: 0.08),
-                width: 0.5,
-              ),
+              border: Border.all(color: badgeBorder, width: 0.5),
             ),
             alignment: Alignment.center,
             child: Icon(icon, color: color, size: 16),
@@ -478,7 +385,7 @@ class _SettingRow extends StatelessWidget {
             child: Text(
               label,
               style: TextStyle(
-                color: destructive ? AppColors.systemRed : Colors.white,
+                color: destructive ? AppColors.systemRed : brand.textPrimary,
                 fontSize: 16,
                 fontWeight: FontWeight.w400,
                 letterSpacing: -0.2,
@@ -492,7 +399,7 @@ class _SettingRow extends StatelessWidget {
               child: Icon(
                 CupertinoIcons.chevron_right,
                 size: 14,
-                color: Colors.white.withValues(alpha: 0.30),
+                color: brand.textMuted,
               ),
             ),
         ]),
@@ -501,12 +408,16 @@ class _SettingRow extends StatelessWidget {
   }
 }
 
+// ---------------------------------------------------------------------------
+// Plan badge / coming soon / value label.
+
 class _PlanBadge extends StatelessWidget {
   const _PlanBadge({required this.isPro});
   final bool isPro;
 
   @override
   Widget build(BuildContext context) {
+    final brand = context.tidyBrand;
     if (isPro) {
       return Container(
         padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -530,7 +441,7 @@ class _PlanBadge extends StatelessWidget {
     return Text(
       'Free',
       style: TextStyle(
-        color: Colors.white.withValues(alpha: 0.50),
+        color: brand.textSecondary,
         fontSize: 15,
         fontWeight: FontWeight.w500,
       ),
@@ -543,12 +454,175 @@ class _ComingSoon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final brand = context.tidyBrand;
     return Text(
       'Coming soon',
       style: TextStyle(
-        color: Colors.white.withValues(alpha: 0.40),
+        color: brand.textMuted,
         fontSize: 13,
         fontWeight: FontWeight.w500,
+      ),
+    );
+  }
+}
+
+class _ValueLabel extends StatelessWidget {
+  const _ValueLabel({required this.text});
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    final brand = context.tidyBrand;
+    return Text(
+      text,
+      style: TextStyle(
+        color: brand.textSecondary,
+        fontSize: 15,
+        fontWeight: FontWeight.w400,
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Theme picker bottom sheet — adapts to current theme.
+
+class _ThemeSheet extends ConsumerWidget {
+  const _ThemeSheet({required this.current});
+  final TidyThemePreference current;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final brand = context.tidyBrand;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final bgColor = isDark ? const Color(0xFF11151D) : brand.surface;
+    final borderColor =
+        isDark ? Colors.white.withValues(alpha: 0.10) : brand.cardBorder;
+    final closeBg = isDark
+        ? Colors.white.withValues(alpha: 0.10)
+        : brand.surfaceSoft;
+    final closeIcon = isDark ? Colors.white : brand.textPrimary;
+
+    return SafeArea(
+      top: false,
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+        decoration: BoxDecoration(
+          color: bgColor,
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: borderColor, width: 0.5),
+          boxShadow: isDark
+              ? const []
+              : [
+                  BoxShadow(
+                    color: const Color(0xFF1A2540).withValues(alpha: 0.10),
+                    blurRadius: 24,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Text(
+                        'Appearance',
+                        style: TextStyle(
+                          color: brand.textPrimary,
+                          fontSize: 17,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: -0.2,
+                        ),
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () => Navigator.of(context).pop(),
+                      behavior: HitTestBehavior.opaque,
+                      child: Container(
+                        width: 28,
+                        height: 28,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: closeBg,
+                        ),
+                        child: Icon(
+                          CupertinoIcons.xmark,
+                          color: closeIcon,
+                          size: 13,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              for (final pref in TidyThemePreference.values)
+                _ThemeSheetRow(
+                  pref: pref,
+                  selected: pref == current,
+                  onTap: () async {
+                    await ref
+                        .read(tidyThemeModeControllerProvider.notifier)
+                        .set(pref);
+                    if (context.mounted) Navigator.of(context).pop();
+                  },
+                ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ThemeSheetRow extends StatelessWidget {
+  const _ThemeSheetRow({
+    required this.pref,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final TidyThemePreference pref;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final brand = context.tidyBrand;
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                pref.displayLabel,
+                style: TextStyle(
+                  color: brand.textPrimary,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w400,
+                  letterSpacing: -0.2,
+                ),
+              ),
+            ),
+            if (selected)
+              Icon(
+                CupertinoIcons.checkmark_alt,
+                color: brand.blue,
+                size: 18,
+              ),
+          ],
+        ),
       ),
     );
   }
