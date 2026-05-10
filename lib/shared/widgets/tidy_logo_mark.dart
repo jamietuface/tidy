@@ -1,14 +1,27 @@
 import 'package:flutter/material.dart';
 
-import '../../core/theme/tidy_brand_palette.dart';
+/// Which version of the Tidy mark to render.
+///
+///  • [auto]  — pick from `Theme.of(context).brightness`
+///  • [light] — force the light reference variant
+///  • [dark]  — force the dark reference variant
+enum TidyLogoVariant { auto, light, dark }
 
-/// The Tidy mark — a layered photo-card "T" rendered in pearl/silver.
+/// The Tidy mark — layered photo-card "T" rendered to match the approved
+/// cropped reference art at `docs/design_refs/stage_1A/`.
 ///
-/// Stays light (pearl badge + pearl mark) in BOTH light and dark themes.
-/// On dark surfaces an optional faint blue rim glow surrounds the badge.
+/// Two distinct variants:
+///  • Light — pearl rounded-square badge with cool blue hairline; pearl-toned
+///    inner cards.
+///  • Dark — near-black glass badge with luminous bluish-white hairline plus
+///    a subtle outer blue rim glow; charcoal inner cards.
 ///
-/// Pure widgets + CustomPainter — no raster assets, no SVG dep. Scales
-/// cleanly from 28 → 128.
+/// Inner composition (both variants):
+///  • Top "photo" card — slightly rotated rounded rectangle with a
+///    mist/mountain gradient and silhouette peaks.
+///  • A small back card peeking out behind the top card on the right.
+///  • Stem — five thin tall cards depth-stacked (each offset a little
+///    right + down) so the right side reads as a fan of card edges.
 class TidyLogoMark extends StatelessWidget {
   const TidyLogoMark({
     super.key,
@@ -16,6 +29,7 @@ class TidyLogoMark extends StatelessWidget {
     this.showBadge = true,
     this.showGlow = true,
     this.monochrome = false,
+    this.variant = TidyLogoVariant.auto,
     this.forceBrightness,
   });
 
@@ -24,19 +38,37 @@ class TidyLogoMark extends StatelessWidget {
   final bool showGlow;
   final bool monochrome;
 
-  /// Override the surrounding theme brightness — used by surfaces locked
-  /// to a single mode (e.g. the dark paywall hero).
+  /// Preferred way to lock the variant. Takes precedence over
+  /// [forceBrightness] and the surrounding theme.
+  final TidyLogoVariant variant;
+
+  /// Legacy override — keep for callers that still pass a `Brightness`.
+  /// Used only when [variant] is [TidyLogoVariant.auto].
   final Brightness? forceBrightness;
+
+  Brightness _resolveBrightness(BuildContext context) {
+    switch (variant) {
+      case TidyLogoVariant.light:
+        return Brightness.light;
+      case TidyLogoVariant.dark:
+        return Brightness.dark;
+      case TidyLogoVariant.auto:
+        return forceBrightness ?? Theme.of(context).brightness;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
-    final brightness = forceBrightness ?? Theme.of(context).brightness;
+    final brightness = _resolveBrightness(context);
     final isDark = brightness == Brightness.dark;
 
     final mark = SizedBox.square(
       dimension: size,
       child: CustomPaint(
-        painter: _LogoMarkPainter(monochrome: monochrome),
+        painter: _LogoMarkPainter(
+          brightness: brightness,
+          monochrome: monochrome,
+        ),
       ),
     );
 
@@ -45,21 +77,23 @@ class TidyLogoMark extends StatelessWidget {
     // Apple app-icon corner radius proportion (~22.5% of side).
     final radius = size * 0.235;
 
-    // Pearl badge in BOTH modes. Cooler tint sits a little brighter on
-    // dark surfaces so the badge reads against pure black; on light
-    // surfaces the gradient is very subtle so the mark doesn't pop too
-    // hard against the page.
-    final badgeGradient = LinearGradient(
-      colors: isDark
-          ? const [Color(0xFFF8FBFF), Color(0xFFDDE5F2)]
-          : const [Color(0xFFFDFEFF), Color(0xFFE6EDF7)],
-      begin: Alignment.topLeft,
-      end: Alignment.bottomRight,
-    );
+    // ---- Badge styling per variant ----
+    final badgeGradient = isDark
+        ? const LinearGradient(
+            colors: [Color(0xFF14181F), Color(0xFF06080C)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          )
+        : const LinearGradient(
+            colors: [Color(0xFFFAFCFF), Color(0xFFDFE6F2)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          );
 
+    // Border: cool blue hairline on light; luminous bluish-white on dark.
     final borderColor = isDark
-        ? const Color(0xFFC8D4E6).withValues(alpha: 0.75)
-        : TidyBrand.hairlineLight;
+        ? const Color(0xFFCBDDF7).withValues(alpha: 0.55)
+        : const Color(0xFFC8D4E6).withValues(alpha: 0.85);
 
     return SizedBox.square(
       dimension: size,
@@ -67,19 +101,19 @@ class TidyLogoMark extends StatelessWidget {
         decoration: BoxDecoration(
           gradient: badgeGradient,
           borderRadius: BorderRadius.circular(radius),
-          border: Border.all(color: borderColor, width: 0.5),
+          border: Border.all(color: borderColor, width: 0.6),
           boxShadow: [
-            // Soft ambient shadow under the badge.
+            // Ambient drop shadow under the badge.
             BoxShadow(
-              color: const Color(0xFF1A2540)
-                  .withValues(alpha: isDark ? 0.30 : 0.06),
+              color: const Color(0xFF000714)
+                  .withValues(alpha: isDark ? 0.45 : 0.08),
               blurRadius: size * 0.22,
               offset: Offset(0, size * 0.045),
             ),
-            // Faint blue rim glow only on dark surfaces.
+            // Outer blue rim glow only on the dark variant.
             if (showGlow && isDark)
               BoxShadow(
-                color: const Color(0xFF007AFF).withValues(alpha: 0.16),
+                color: const Color(0xFF5AB8FF).withValues(alpha: 0.25),
                 blurRadius: size * 0.32,
                 spreadRadius: size * 0.005,
               ),
@@ -101,21 +135,23 @@ class TidyLogoMark extends StatelessWidget {
                       begin: Alignment.topCenter,
                       end: Alignment.bottomCenter,
                       colors: [
-                        Colors.white.withValues(alpha: 0.65),
+                        Colors.white
+                            .withValues(alpha: isDark ? 0.08 : 0.55),
                         Colors.white.withValues(alpha: 0),
                       ],
                     ),
                   ),
                 ),
               ),
-              // Subtle inner vignette for depth.
+              // Subtle inner vignette.
               Positioned.fill(
                 child: DecoratedBox(
                   decoration: BoxDecoration(
                     gradient: RadialGradient(
                       colors: [
                         Colors.transparent,
-                        const Color(0xFF1A2540).withValues(alpha: 0.04),
+                        Colors.black
+                            .withValues(alpha: isDark ? 0.30 : 0.05),
                       ],
                       radius: 0.85,
                     ),
@@ -131,184 +167,257 @@ class TidyLogoMark extends StatelessWidget {
   }
 }
 
-/// Paints the layered photo-card "T".
-///
-/// Composition (back to front):
-///  1. Soft ground shadow under the whole mark
-///  2. Two back peek cards rotated -20° / -10° behind the top slab
-///  3. Top main card — wide, slightly tilted upward-right, pearl gradient
-///     with a faint cool "horizon" hint on the lower half
-///  4. Stem — three thin tapered cards stacked downward, slight horizontal
-///     drift suggesting hand-stacked photos
+/// Paints the inner T composition. All geometry is normalised to the
+/// painter's square `size`, so the same code scales 28 → 128.
 class _LogoMarkPainter extends CustomPainter {
-  _LogoMarkPainter({required this.monochrome});
+  _LogoMarkPainter({required this.brightness, required this.monochrome});
 
+  final Brightness brightness;
   final bool monochrome;
+
+  bool get _isDark => brightness == Brightness.dark;
 
   @override
   void paint(Canvas canvas, Size size) {
     final s = size.width;
 
-    // Mark fills 68% of the canvas (16% inset on every side).
-    final inset = s * 0.16;
+    // ---- Layout ----
+    final inset = s * 0.10;
     final lw = s - inset * 2;
     final lh = s - inset * 2;
     final cx = s / 2;
     final top = inset;
 
-    // ---- Pearl ramps ----
-    final pearlBright = monochrome
-        ? const Color(0xFFFFFFFF)
-        : const Color(0xFFFAFCFF);
-    final pearlMid = monochrome
-        ? const Color(0xFFE5E9F0)
-        : const Color(0xFFE6EDF7);
-    final pearlDeep = monochrome
-        ? const Color(0xFFB8C2D0)
-        : const Color(0xFFB8C2D9);
-    final pearlShade = monochrome
-        ? const Color(0xFF98A1B0)
-        : const Color(0xFF98A4BC);
+    // ---- Per-variant ramps ----
+    // Stem cards — pearl gradient on light, charcoal on dark.
+    final stemColors = monochrome
+        ? const [Color(0xFFFFFFFF), Color(0xFFCBD3E0)]
+        : (_isDark
+            ? const [Color(0xFF1F242F), Color(0xFF0A0D14)]
+            : const [Color(0xFFFCFDFF), Color(0xFFD9E0EC)]);
 
-    // ---- 1. Soft ground shadow ----
-    canvas.drawOval(
-      Rect.fromCenter(
-        center: Offset(cx, top + lh * 0.93),
-        width: lw * 0.70,
-        height: lh * 0.10,
-      ),
+    // Peek/back card — slightly muted version of the stem palette.
+    final peekColors = monochrome
+        ? const [Color(0xFFE8EBF1), Color(0xFFB8C2D0)]
+        : (_isDark
+            ? const [Color(0xFF1A1F28), Color(0xFF06080D)]
+            : const [Color(0xFFF1F5FB), Color(0xFFC8D2E2)]);
+
+    // Edge highlight on top of every card.
+    final edgeHighlight = _isDark
+        ? Colors.white.withValues(alpha: 0.20)
+        : Colors.white.withValues(alpha: 0.70);
+
+    // Hairline border colour.
+    final hairline = _isDark
+        ? Colors.white.withValues(alpha: 0.16)
+        : const Color(0xFFB8C2D9).withValues(alpha: 0.55);
+
+    // Mountain photo gradient on the top card. Same shape both modes —
+    // the peaks are slightly darker on dark to keep contrast.
+    const mountainStops = [0.0, 0.30, 0.55, 1.0];
+    final mountainColors = monochrome
+        ? const [
+            Color(0xFFCDD5E2),
+            Color(0xFFE6EBF4),
+            Color(0xFF8E97AC),
+            Color(0xFF42495A),
+          ]
+        : (_isDark
+            ? const [
+                Color(0xFF747F95),
+                Color(0xFFA9B5CD),
+                Color(0xFF353D4D),
+                Color(0xFF13171F),
+              ]
+            : const [
+                Color(0xFFB8C2D8),
+                Color(0xFFD8DFEC),
+                Color(0xFF7A839A),
+                Color(0xFF424A5F),
+              ]);
+
+    // ---- 1. Stem stack — 5 cards, drawn back-to-front ----
+    // Slightly right of centre, depth-stacked so each successive card
+    // peeks a little to the right and down. Combined with hairline
+    // borders, the right side reads as a fan of card edges.
+    final stemCenterX = cx + lw * 0.04;
+    final stemTopY = top + lh * 0.43;
+    final stemBottomY = top + lh * 0.97;
+    final stemH = stemBottomY - stemTopY;
+    final stemW = lw * 0.32;
+
+    // Draw the deepest card's drop shadow once.
+    final deepestRect = Rect.fromCenter(
+      center: Offset(stemCenterX + 4 * 1.4, stemTopY + stemH / 2 + 4 * 0.8),
+      width: stemW,
+      height: stemH,
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndRadius(deepestRect, Radius.circular(s * 0.06))
+          .shift(Offset(0, lh * 0.018)),
       Paint()
-        ..color = Colors.black.withValues(alpha: 0.10)
-        ..maskFilter = MaskFilter.blur(BlurStyle.normal, lh * 0.05),
+        ..color = Colors.black.withValues(alpha: _isDark ? 0.55 : 0.22)
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, lh * 0.030),
     );
 
-    // ---- 2. Back peek cards ----
-    // Furthest back — mostly hidden, peeks lower-left.
-    _drawCard(
-      canvas,
-      center: Offset(cx + lw * 0.06, top + lh * 0.22),
-      width: lw * 0.74,
-      height: lh * 0.22,
-      rotation: -0.22,
-      colors: [pearlMid, pearlShade],
-      cornerRadius: s * 0.024,
-      shadowOpacity: 0.10,
-      shadowOffset: Offset(0, lh * 0.014),
-      shadowBlur: lh * 0.030,
-      sheenOpacity: 0.30,
-      borderOpacity: 0.45,
-    );
-
-    // Nearer back card — peeks upper-right.
-    _drawCard(
-      canvas,
-      center: Offset(cx - lw * 0.05, top + lh * 0.20),
-      width: lw * 0.78,
-      height: lh * 0.23,
-      rotation: -0.11,
-      colors: [pearlMid, pearlDeep],
-      cornerRadius: s * 0.026,
-      shadowOpacity: 0.12,
-      shadowOffset: Offset(0, lh * 0.018),
-      shadowBlur: lh * 0.036,
-      sheenOpacity: 0.40,
-      borderOpacity: 0.55,
-    );
-
-    // ---- 3. Top main card ----
-    // Slight upward-right tilt (-0.04 rad ≈ -2.3°). Wider than the back
-    // cards so it dominates. Includes a faint cool "horizon" hint on the
-    // lower half to suggest a real photo without being literal.
-    _drawCard(
-      canvas,
-      center: Offset(cx, top + lh * 0.18),
-      width: lw * 0.86,
-      height: lh * 0.25,
-      rotation: -0.04,
-      colors: [pearlBright, pearlDeep],
-      cornerRadius: s * 0.030,
-      shadowOpacity: 0.18,
-      shadowOffset: Offset(0, lh * 0.024),
-      shadowBlur: lh * 0.045,
-      sheenOpacity: 0.55,
-      borderOpacity: 0.65,
-      withHorizonHint: !monochrome,
-    );
-
-    // ---- 4. Stem — 3 thin stacked cards ----
-    // Stacked vertically with slight horizontal drift and progressive
-    // taper. Each one casts a tiny shadow onto the next so they read as
-    // separate photos.
-    final stemCenters = [
-      Offset(cx + lw * 0.000, top + lh * 0.45),
-      Offset(cx + lw * 0.008, top + lh * 0.60),
-      Offset(cx + lw * 0.016, top + lh * 0.74),
-    ];
-    final stemWidths = [lw * 0.27, lw * 0.25, lw * 0.23];
-    final stemHeights = [lh * 0.13, lh * 0.13, lh * 0.13];
-    final stemColorPairs = [
-      [pearlBright, pearlDeep],
-      [pearlMid, pearlDeep],
-      [pearlMid, pearlShade],
-    ];
-
-    for (var i = 0; i < 3; i++) {
-      _drawCard(
+    for (var i = 4; i >= 0; i--) {
+      final ox = i * 1.4;
+      final oy = i * 0.8;
+      _drawStemCard(
         canvas,
-        center: stemCenters[i],
-        width: stemWidths[i],
-        height: stemHeights[i],
-        rotation: 0.0,
-        colors: stemColorPairs[i],
-        cornerRadius: s * 0.020,
-        shadowOpacity: 0.13,
-        shadowOffset: Offset(0, lh * 0.011),
-        shadowBlur: lh * 0.022,
-        sheenOpacity: 0.40,
-        borderOpacity: 0.50,
+        center: Offset(stemCenterX + ox, stemTopY + stemH / 2 + oy),
+        width: stemW,
+        height: stemH,
+        cornerRadius: s * 0.06,
+        colors: stemColors,
+        edgeHighlight: edgeHighlight,
+        border: hairline,
+        sheenAlpha: _isDark ? 0.10 : 0.45,
       );
     }
+
+    // ---- 2. Back peek card behind the top card ----
+    // Small slab visible behind the top card, peeking lower-right.
+    canvas.save();
+    canvas.translate(cx + lw * 0.10, top + lh * 0.28);
+    canvas.rotate(-0.06);
+    final peekRect = Rect.fromCenter(
+      center: Offset.zero,
+      width: lw * 0.55,
+      height: lh * 0.22,
+    );
+    final peekRRect =
+        RRect.fromRectAndRadius(peekRect, Radius.circular(s * 0.04));
+    canvas.drawRRect(
+      peekRRect.shift(Offset(0, lh * 0.014)),
+      Paint()
+        ..color = Colors.black.withValues(alpha: _isDark ? 0.45 : 0.16)
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, lh * 0.022),
+    );
+    canvas.drawRRect(
+      peekRRect,
+      Paint()
+        ..shader = LinearGradient(
+          colors: peekColors,
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+        ).createShader(peekRect),
+    );
+    canvas.drawRRect(
+      peekRRect,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 0.5
+        ..color = hairline,
+    );
+    canvas.restore();
+
+    // ---- 3. Top main card (photo card with mountains) ----
+    canvas.save();
+    canvas.translate(cx, top + lh * 0.22);
+    canvas.rotate(-0.05); // slight upward-right tilt
+    final topRect = Rect.fromCenter(
+      center: Offset.zero,
+      width: lw * 0.86,
+      height: lh * 0.27,
+    );
+    final topRRect =
+        RRect.fromRectAndRadius(topRect, Radius.circular(s * 0.045));
+
+    // Drop shadow.
+    canvas.drawRRect(
+      topRRect.shift(Offset(0, lh * 0.025)),
+      Paint()
+        ..color = Colors.black.withValues(alpha: _isDark ? 0.55 : 0.22)
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, lh * 0.040),
+    );
+
+    // Mountain photo gradient.
+    canvas.drawRRect(
+      topRRect,
+      Paint()
+        ..shader = LinearGradient(
+          colors: mountainColors,
+          stops: mountainStops,
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ).createShader(topRect),
+    );
+
+    // Mountain silhouettes — clipped to the card.
+    canvas.save();
+    canvas.clipRRect(topRRect);
+    _drawMountainPeaks(canvas, topRect, isDark: _isDark, monochrome: monochrome);
+    canvas.restore();
+
+    // Top sheen.
+    final topSheenH = topRect.height * 0.40;
+    final topSheenRect = Rect.fromLTWH(
+      topRect.left,
+      topRect.top,
+      topRect.width,
+      topSheenH,
+    );
+    canvas.drawRRect(
+      RRect.fromRectAndCorners(
+        topSheenRect,
+        topLeft: Radius.circular(s * 0.045),
+        topRight: Radius.circular(s * 0.045),
+      ),
+      Paint()
+        ..shader = LinearGradient(
+          colors: [
+            Colors.white.withValues(alpha: _isDark ? 0.18 : 0.45),
+            Colors.white.withValues(alpha: 0),
+          ],
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+        ).createShader(topSheenRect),
+    );
+
+    // Hairline border.
+    canvas.drawRRect(
+      topRRect,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 0.6
+        ..color = hairline,
+    );
+
+    // Bright top edge highlight.
+    canvas.drawLine(
+      Offset(topRect.left + s * 0.05, topRect.top + 0.5),
+      Offset(topRect.right - s * 0.05, topRect.top + 0.5),
+      Paint()
+        ..color = edgeHighlight
+        ..strokeWidth = 0.6,
+    );
+
+    canvas.restore();
   }
 
-  /// Draws a single rounded photo-card with shadow, gradient fill,
-  /// optional horizon hint, top sheen, top edge highlight, and hairline
-  /// border. All geometry is centered on `center` and rotated by
-  /// `rotation` radians.
-  void _drawCard(
+  /// One stem card — drop shadow handled separately for the deepest card,
+  /// the rest only need fill + sheen + edges so they read as a stack.
+  void _drawStemCard(
     Canvas canvas, {
     required Offset center,
     required double width,
     required double height,
-    required double rotation,
-    required List<Color> colors,
     required double cornerRadius,
-    required double shadowOpacity,
-    required Offset shadowOffset,
-    required double shadowBlur,
-    required double sheenOpacity,
-    required double borderOpacity,
-    bool withHorizonHint = false,
+    required List<Color> colors,
+    required Color edgeHighlight,
+    required Color border,
+    required double sheenAlpha,
   }) {
-    canvas.save();
-    canvas.translate(center.dx, center.dy);
-    canvas.rotate(rotation);
-
     final rect = Rect.fromCenter(
-      center: Offset.zero,
+      center: center,
       width: width,
       height: height,
     );
     final rrect = RRect.fromRectAndRadius(rect, Radius.circular(cornerRadius));
 
-    // Shadow.
-    canvas.drawRRect(
-      rrect.shift(shadowOffset),
-      Paint()
-        ..color = Colors.black.withValues(alpha: shadowOpacity)
-        ..maskFilter = MaskFilter.blur(BlurStyle.normal, shadowBlur),
-    );
-
-    // Card fill — pearl gradient.
+    // Card fill.
     canvas.drawRRect(
       rrect,
       Paint()
@@ -319,35 +428,8 @@ class _LogoMarkPainter extends CustomPainter {
         ).createShader(rect),
     );
 
-    // Optional faint cool "horizon" hint on the lower half of the top
-    // card — abstract enough to not look literal, just suggests a photo.
-    if (withHorizonHint) {
-      final hintRect = Rect.fromLTRB(
-        rect.left,
-        rect.center.dy + height * 0.05,
-        rect.right,
-        rect.bottom,
-      );
-      canvas.drawRRect(
-        RRect.fromRectAndCorners(
-          hintRect,
-          bottomLeft: Radius.circular(cornerRadius),
-          bottomRight: Radius.circular(cornerRadius),
-        ),
-        Paint()
-          ..shader = LinearGradient(
-            colors: [
-              const Color(0xFFC8D4E6).withValues(alpha: 0.0),
-              const Color(0xFF8FA0BF).withValues(alpha: 0.28),
-            ],
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-          ).createShader(hintRect),
-      );
-    }
-
-    // Top sheen (downward fade from white).
-    final sheenH = height * 0.50;
+    // Top sheen (just the upper portion).
+    final sheenH = height * 0.30;
     final sheenRect = Rect.fromLTWH(rect.left, rect.top, rect.width, sheenH);
     canvas.drawRRect(
       RRect.fromRectAndCorners(
@@ -358,7 +440,7 @@ class _LogoMarkPainter extends CustomPainter {
       Paint()
         ..shader = LinearGradient(
           colors: [
-            Colors.white.withValues(alpha: sheenOpacity),
+            Colors.white.withValues(alpha: sheenAlpha),
             Colors.white.withValues(alpha: 0),
           ],
           begin: Alignment.topCenter,
@@ -366,29 +448,76 @@ class _LogoMarkPainter extends CustomPainter {
         ).createShader(sheenRect),
     );
 
-    // Bright 0.5px top edge highlight to emphasise the photo-card feel.
-    canvas.drawLine(
-      Offset(rect.left + cornerRadius * 0.6, rect.top + 0.4),
-      Offset(rect.right - cornerRadius * 0.6, rect.top + 0.4),
-      Paint()
-        ..color = Colors.white.withValues(alpha: 0.65)
-        ..strokeWidth = 0.5,
-    );
-
-    // Cool-gray hairline border.
+    // Hairline border.
     canvas.drawRRect(
       rrect,
       Paint()
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 0.4
-        ..color = const Color(0xFFB8C2D9).withValues(alpha: borderOpacity),
+        ..strokeWidth = 0.5
+        ..color = border,
     );
 
-    canvas.restore();
+    // Bright top edge highlight.
+    canvas.drawLine(
+      Offset(rect.left + cornerRadius * 0.6, rect.top + 0.4),
+      Offset(rect.right - cornerRadius * 0.6, rect.top + 0.4),
+      Paint()
+        ..color = edgeHighlight
+        ..strokeWidth = 0.5,
+    );
+  }
+
+  /// Suggests mountain peaks within the top card without being literal.
+  void _drawMountainPeaks(
+    Canvas canvas,
+    Rect rect, {
+    required bool isDark,
+    required bool monochrome,
+  }) {
+    final farPeakColor = monochrome
+        ? const Color(0xFF8B95AB).withValues(alpha: 0.45)
+        : (isDark
+            ? const Color(0xFF252B38).withValues(alpha: 0.65)
+            : const Color(0xFF6E768D).withValues(alpha: 0.45));
+
+    final nearPeakColor = monochrome
+        ? const Color(0xFF52596C).withValues(alpha: 0.85)
+        : (isDark
+            ? const Color(0xFF0B0E16).withValues(alpha: 0.85)
+            : const Color(0xFF424A5F).withValues(alpha: 0.85));
+
+    // Far range — soft hazy peaks, lower contrast.
+    final farPath = Path()
+      ..moveTo(rect.left, rect.bottom)
+      ..lineTo(rect.left, rect.center.dy + rect.height * 0.18)
+      ..lineTo(rect.left + rect.width * 0.22, rect.center.dy - rect.height * 0.05)
+      ..lineTo(rect.left + rect.width * 0.40, rect.center.dy + rect.height * 0.10)
+      ..lineTo(rect.left + rect.width * 0.55, rect.center.dy - rect.height * 0.02)
+      ..lineTo(rect.left + rect.width * 0.72, rect.center.dy + rect.height * 0.12)
+      ..lineTo(rect.left + rect.width * 0.88, rect.center.dy + rect.height * 0.02)
+      ..lineTo(rect.right, rect.center.dy + rect.height * 0.20)
+      ..lineTo(rect.right, rect.bottom)
+      ..close();
+    canvas.drawPath(farPath, Paint()..color = farPeakColor);
+
+    // Near range — darker, sharper, foreground.
+    final nearPath = Path()
+      ..moveTo(rect.left, rect.bottom)
+      ..lineTo(rect.left, rect.center.dy + rect.height * 0.32)
+      ..lineTo(rect.left + rect.width * 0.18, rect.center.dy + rect.height * 0.18)
+      ..lineTo(rect.left + rect.width * 0.32, rect.center.dy + rect.height * 0.30)
+      ..lineTo(rect.left + rect.width * 0.50, rect.center.dy + rect.height * 0.16)
+      ..lineTo(rect.left + rect.width * 0.68, rect.center.dy + rect.height * 0.28)
+      ..lineTo(rect.left + rect.width * 0.84, rect.center.dy + rect.height * 0.20)
+      ..lineTo(rect.right, rect.center.dy + rect.height * 0.34)
+      ..lineTo(rect.right, rect.bottom)
+      ..close();
+    canvas.drawPath(nearPath, Paint()..color = nearPeakColor);
   }
 
   @override
   bool shouldRepaint(covariant _LogoMarkPainter oldDelegate) {
-    return oldDelegate.monochrome != monochrome;
+    return oldDelegate.brightness != brightness ||
+        oldDelegate.monochrome != monochrome;
   }
 }

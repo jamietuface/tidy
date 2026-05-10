@@ -9,6 +9,9 @@ enum TidyBrandLockupSize { small, medium, large }
 
 /// Logo + wordmark composition. Use this in onboarding, sign-in, paywall
 /// headers, and any marketing-consistent surface.
+///
+/// Pass [variant] to force the light or dark logo regardless of the
+/// surrounding theme; default `auto` follows it.
 class TidyBrandLockup extends StatelessWidget {
   const TidyBrandLockup({
     super.key,
@@ -17,6 +20,7 @@ class TidyBrandLockup extends StatelessWidget {
     this.showGlow = true,
     this.monochrome = false,
     this.showBadge = true,
+    this.variant = TidyLogoVariant.auto,
     this.forceBrightness,
   });
 
@@ -25,6 +29,7 @@ class TidyBrandLockup extends StatelessWidget {
   final bool showGlow;
   final bool monochrome;
   final bool showBadge;
+  final TidyLogoVariant variant;
   final Brightness? forceBrightness;
 
   // ---- Size table -----------------------------------------------------
@@ -69,10 +74,12 @@ class TidyBrandLockup extends StatelessWidget {
       showGlow: showGlow,
       monochrome: monochrome,
       showBadge: showBadge,
+      variant: variant,
       forceBrightness: forceBrightness,
     );
     final word = TidyWordmark(
       fontSize: _wordSize,
+      variant: variant,
       forceBrightness: forceBrightness,
     );
 

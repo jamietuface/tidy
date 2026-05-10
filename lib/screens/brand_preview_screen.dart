@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../core/theme/tidy_brand_palette.dart';
-import '../core/theme/tidy_theme.dart';
 import '../core/theme/tidy_theme_mode_controller.dart';
 import '../shared/widgets/tidy_brand_lockup.dart';
 import '../shared/widgets/tidy_logo_mark.dart';
@@ -88,9 +87,9 @@ class BrandPreviewScreen extends ConsumerWidget {
             const SizedBox(height: 36),
             const _SectionLabel('SURFACES'),
             const SizedBox(height: 14),
-            const _SurfacePreview(forceBrightness: Brightness.light),
+            const _SurfacePreview(variant: TidyLogoVariant.light),
             const SizedBox(height: 14),
-            const _SurfacePreview(forceBrightness: Brightness.dark),
+            const _SurfacePreview(variant: TidyLogoVariant.dark),
             const SizedBox(height: 36),
             const _SectionLabel('COMPONENT TOKENS'),
             const SizedBox(height: 14),
@@ -315,48 +314,46 @@ class _WordmarkRow extends StatelessWidget {
 // logo on both light and dark surfaces regardless of current app theme.
 
 class _SurfacePreview extends StatelessWidget {
-  const _SurfacePreview({required this.forceBrightness});
-  final Brightness forceBrightness;
+  const _SurfacePreview({required this.variant});
+  final TidyLogoVariant variant;
 
   @override
   Widget build(BuildContext context) {
-    final isDark = forceBrightness == Brightness.dark;
-    final innerTheme = isDark ? TidyTheme.dark() : TidyTheme.light();
+    final isDark = variant == TidyLogoVariant.dark;
     final innerBrand = isDark ? TidyBrandPalette.dark : TidyBrandPalette.light;
 
-    return Theme(
-      data: innerTheme,
-      child: Container(
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          color: innerBrand.background,
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: innerBrand.cardBorder, width: 0.5),
-        ),
-        child: Row(
-          children: [
-            const TidyLogoMark(size: 64),
-            const SizedBox(width: 18),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const TidyWordmark(fontSize: 24),
-                  const SizedBox(height: 6),
-                  Text(
-                    isDark ? 'On dark surface' : 'On light surface',
-                    style: TextStyle(
-                      color: innerBrand.textSecondary,
-                      fontSize: 13,
-                      fontWeight: FontWeight.w400,
-                      letterSpacing: -0.1,
-                    ),
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: innerBrand.background,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: innerBrand.cardBorder, width: 0.5),
+      ),
+      child: Row(
+        children: [
+          TidyLogoMark(size: 64, variant: variant),
+          const SizedBox(width: 18),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                TidyWordmark(fontSize: 24, variant: variant),
+                const SizedBox(height: 6),
+                Text(
+                  isDark
+                      ? 'Dark variant on dark surface'
+                      : 'Light variant on light surface',
+                  style: TextStyle(
+                    color: innerBrand.textSecondary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w400,
+                    letterSpacing: -0.1,
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }

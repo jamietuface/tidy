@@ -9,6 +9,8 @@ import '../features/auth/user_repository.dart';
 import '../features/paywall/iap_service.dart';
 import '../services/auth_service.dart';
 import '../shared/widgets/tidy_logo_mark.dart';
+// (using TidyLogoVariant for the paywall hero — paywall stays dark in
+// Stage 1A regardless of app theme.)
 import '../theme/app_theme.dart';
 
 class PaywallScreen extends ConsumerStatefulWidget {
@@ -133,7 +135,7 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
                         const SizedBox(height: 24),
                         const TidyLogoMark(
                           size: 84,
-                          forceBrightness: Brightness.dark,
+                          variant: TidyLogoVariant.dark,
                         ),
                         const SizedBox(height: 24),
                         const Text(

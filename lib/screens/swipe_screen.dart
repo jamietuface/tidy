@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../core/theme/tidy_brand_palette.dart';
 import '../features/ai/group_counts_provider.dart';
 import '../features/auth/user_repository.dart';
 import '../features/swipe/group_type.dart';
@@ -10,29 +11,34 @@ import '../features/swipe/photo_decisions_repository.dart';
 import '../features/swipe/swipe_card_screen.dart';
 import '../theme/app_theme.dart';
 
-/// Metallic-dark home dashboard. Tidy Pro aesthetic: black bg, radial halos,
-/// glass cards, glossy gradient CTA. Always dark — independent of system theme.
+/// Tidy home dashboard. Adapts to the active theme — metallic-dark in
+/// dark mode, airy pearl in light mode. Brand-coloured CTAs and metallic
+/// AI tiles read well on either background.
 class SwipeScreen extends ConsumerWidget {
   const SwipeScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final isPro = ref.watch(isProProvider);
+    final brand = context.tidyBrand;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: brand.background,
       body: Stack(
         children: [
-          const Positioned.fill(
-            child: IgnorePointer(child: _GlowHalos()),
-          ),
+          // Halos only render on dark — they'd wash out a light page.
+          if (isDark)
+            const Positioned.fill(
+              child: IgnorePointer(child: _GlowHalos()),
+            ),
           CustomScrollView(
             slivers: [
               SliverAppBar.large(
-                title: const Text(
+                title: Text(
                   'Tidy',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: brand.textPrimary,
                     fontWeight: FontWeight.w700,
                     letterSpacing: -0.4,
                   ),
@@ -40,13 +46,13 @@ class SwipeScreen extends ConsumerWidget {
                 backgroundColor: Colors.transparent,
                 surfaceTintColor: Colors.transparent,
                 scrolledUnderElevation: 0,
-                foregroundColor: Colors.white,
+                foregroundColor: brand.textPrimary,
                 actions: [
                   if (!isPro)
                     IconButton(
-                      icon: const Icon(
+                      icon: Icon(
                         CupertinoIcons.lock_fill,
-                        color: AppColors.systemBlue,
+                        color: brand.blue,
                       ),
                       tooltip: 'Unlock Pro',
                       onPressed: () => context.push('/paywall'),
@@ -54,9 +60,9 @@ class SwipeScreen extends ConsumerWidget {
                   else
                     const _ProPill(),
                   IconButton(
-                    icon: const Icon(
+                    icon: Icon(
                       CupertinoIcons.slider_horizontal_3,
-                      color: Colors.white,
+                      color: brand.textPrimary,
                     ),
                     onPressed: () => context.push('/settings'),
                   ),
@@ -66,11 +72,11 @@ class SwipeScreen extends ConsumerWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 sliver: SliverList(
                   delegate: SliverChildListDelegate([
-                    const _DarkSectionHeader('AI GROUPS'),
+                    const _SectionHeader('AI GROUPS'),
                     const SizedBox(height: 14),
                     const _AIGroupsRow(),
                     const SizedBox(height: 32),
-                    const _DarkSectionHeader('THIS WEEK'),
+                    const _SectionHeader('THIS WEEK'),
                     const SizedBox(height: 14),
                     const _ThisWeekCard(),
                     const SizedBox(height: 32),
@@ -133,18 +139,19 @@ class _GlowHalos extends StatelessWidget {
   }
 }
 
-class _DarkSectionHeader extends StatelessWidget {
-  const _DarkSectionHeader(this.text);
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader(this.text);
   final String text;
 
   @override
   Widget build(BuildContext context) {
+    final brand = context.tidyBrand;
     return Padding(
       padding: const EdgeInsets.only(left: 4),
       child: Text(
         text,
         style: TextStyle(
-          color: Colors.white.withValues(alpha: 0.50),
+          color: brand.textMuted,
           fontSize: 12,
           fontWeight: FontWeight.w500,
           letterSpacing: 0.8,
@@ -193,6 +200,7 @@ class _AIGroupsRow extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final countsAsync = ref.watch(groupCountsProvider);
+    final brand = context.tidyBrand;
 
     return SizedBox(
       height: 116,
@@ -222,7 +230,7 @@ class _AIGroupsRow extends ConsumerWidget {
                 Text(
                   group.shortLabel,
                   style: TextStyle(
-                    color: Colors.white.withValues(alpha: 0.65),
+                    color: brand.textSecondary,
                     fontSize: 12,
                     fontWeight: FontWeight.w500,
                     letterSpacing: -0.1,
@@ -252,6 +260,17 @@ class _MetallicTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    // Lighter alphas in light mode so the tinted gradient stays delicate
+    // against a pearl page; richer alphas in dark to read on black.
+    final fillTop = color.withValues(alpha: isDark ? 0.28 : 0.18);
+    final fillBottom = color.withValues(alpha: isDark ? 0.08 : 0.05);
+    final borderColor = isDark
+        ? Colors.white.withValues(alpha: 0.10)
+        : color.withValues(alpha: 0.30);
+    final glowAlpha = isDark ? 0.20 : 0.12;
+    final sheenAlpha = isDark ? 0.18 : 0.55;
+
     return Container(
       width: 76,
       height: 76,
@@ -259,19 +278,13 @@ class _MetallicTile extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            color.withValues(alpha: 0.28),
-            color.withValues(alpha: 0.08),
-          ],
+          colors: [fillTop, fillBottom],
         ),
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.10),
-          width: 0.5,
-        ),
+        border: Border.all(color: borderColor, width: 0.5),
         boxShadow: [
           BoxShadow(
-            color: color.withValues(alpha: 0.20),
+            color: color.withValues(alpha: glowAlpha),
             blurRadius: 16,
             offset: const Offset(0, 6),
           ),
@@ -281,7 +294,7 @@ class _MetallicTile extends StatelessWidget {
         borderRadius: BorderRadius.circular(18),
         child: Stack(
           children: [
-            // Top sheen
+            // Top sheen.
             Positioned(
               top: 0, left: 0, right: 0, height: 24,
               child: DecoratedBox(
@@ -290,7 +303,7 @@ class _MetallicTile extends StatelessWidget {
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: [
-                      Colors.white.withValues(alpha: 0.18),
+                      Colors.white.withValues(alpha: sheenAlpha),
                       Colors.white.withValues(alpha: 0),
                     ],
                   ),
@@ -350,39 +363,54 @@ class _ThisWeekCard extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final stats = ref.watch(decisionStatsProvider).asData?.value
         ?? DecisionStats.empty;
-    final divider = Colors.white.withValues(alpha: 0.06);
+    final brand = context.tidyBrand;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final fill = isDark ? Colors.white.withValues(alpha: 0.06) : brand.surface;
+    final borderColor =
+        isDark ? Colors.white.withValues(alpha: 0.10) : brand.cardBorder;
+    final dividerColor = isDark
+        ? Colors.white.withValues(alpha: 0.06)
+        : brand.cardBorderSubtle;
 
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.06),
+        color: fill,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.10),
-          width: 0.5,
-        ),
+        border: Border.all(color: borderColor, width: 0.5),
+        boxShadow: isDark
+            ? const []
+            : [
+                BoxShadow(
+                  color: const Color(0xFF1A2540).withValues(alpha: 0.05),
+                  blurRadius: 14,
+                  offset: const Offset(0, 3),
+                ),
+              ],
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(18),
         child: Stack(
           children: [
-            // Top sheen
-            Positioned(
-              top: 0, left: 0, right: 0, height: 30,
-              child: IgnorePointer(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        Colors.white.withValues(alpha: 0.06),
-                        Colors.white.withValues(alpha: 0),
-                      ],
+            // Top sheen — only on dark, where the glass reads.
+            if (isDark)
+              Positioned(
+                top: 0, left: 0, right: 0, height: 30,
+                child: IgnorePointer(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.white.withValues(alpha: 0.06),
+                          Colors.white.withValues(alpha: 0),
+                        ],
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
             Column(
               children: [
                 _StatRow(
@@ -391,14 +419,22 @@ class _ThisWeekCard extends ConsumerWidget {
                   label: 'Kept',
                   value: '${stats.kept}',
                 ),
-                Container(height: 0.5, margin: const EdgeInsets.only(left: 60), color: divider),
+                Container(
+                  height: 0.5,
+                  margin: const EdgeInsets.only(left: 60),
+                  color: dividerColor,
+                ),
                 _StatRow(
                   icon: CupertinoIcons.trash_fill,
                   color: AppColors.systemRed,
                   label: 'Deleted',
                   value: '${stats.deleted}',
                 ),
-                Container(height: 0.5, margin: const EdgeInsets.only(left: 60), color: divider),
+                Container(
+                  height: 0.5,
+                  margin: const EdgeInsets.only(left: 60),
+                  color: dividerColor,
+                ),
                 _StatRow(
                   icon: CupertinoIcons.cloud_fill,
                   color: AppColors.systemBlue,
@@ -429,6 +465,16 @@ class _StatRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final brand = context.tidyBrand;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final badgeGradient = isDark
+        ? [color.withValues(alpha: 0.30), color.withValues(alpha: 0.10)]
+        : [color.withValues(alpha: 0.20), color.withValues(alpha: 0.08)];
+    final badgeBorder = isDark
+        ? Colors.white.withValues(alpha: 0.08)
+        : color.withValues(alpha: 0.28);
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       child: Row(
@@ -440,16 +486,10 @@ class _StatRow extends StatelessWidget {
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [
-                  color.withValues(alpha: 0.30),
-                  color.withValues(alpha: 0.10),
-                ],
+                colors: badgeGradient,
               ),
               borderRadius: BorderRadius.circular(9),
-              border: Border.all(
-                color: Colors.white.withValues(alpha: 0.08),
-                width: 0.5,
-              ),
+              border: Border.all(color: badgeBorder, width: 0.5),
             ),
             alignment: Alignment.center,
             child: Icon(icon, color: color, size: 16),
@@ -458,8 +498,8 @@ class _StatRow extends StatelessWidget {
           Expanded(
             child: Text(
               label,
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: brand.textPrimary,
                 fontSize: 16,
                 fontWeight: FontWeight.w400,
                 letterSpacing: -0.2,
@@ -469,7 +509,7 @@ class _StatRow extends StatelessWidget {
           Text(
             value,
             style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.50),
+              color: brand.textSecondary,
               fontSize: 16,
               fontWeight: FontWeight.w500,
               letterSpacing: -0.2,

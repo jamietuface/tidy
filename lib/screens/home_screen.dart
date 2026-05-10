@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/theme/tidy_brand_palette.dart';
 import '../theme/app_theme.dart';
 import 'subscriptions_screen.dart';
 import 'swipe_screen.dart';
@@ -18,8 +19,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final brand = context.tidyBrand;
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: brand.background,
       body: IndexedStack(
         index: _tab,
         children: const [SwipeScreen(), SubscriptionsScreen()],
@@ -32,9 +34,9 @@ class _HomeScreenState extends ConsumerState<HomeScreen> {
   }
 }
 
-/// Solid metallic dark nav bar matching the SwipeScreen aesthetic.
-/// Selected: gradient blue→indigo with glow shadow on the icon.
-/// Unselected: white 35%.
+/// Bottom navigation bar — adapts to theme.
+/// Selected: gradient blue→indigo with brand-blue label.
+/// Unselected: muted text colour from the brand palette.
 class _MetallicNavBar extends StatelessWidget {
   const _MetallicNavBar({
     required this.selectedIndex,
@@ -51,14 +53,22 @@ class _MetallicNavBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final brand = context.tidyBrand;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final bgColor = isDark ? Colors.black : brand.surface;
+    final topBorderColor = isDark
+        ? Colors.white.withValues(alpha: 0.08)
+        : brand.cardBorderSubtle;
+    final unselectedColor = isDark
+        ? Colors.white.withValues(alpha: 0.35)
+        : brand.textMuted;
+
     return Container(
       decoration: BoxDecoration(
-        color: Colors.black,
+        color: bgColor,
         border: Border(
-          top: BorderSide(
-            color: Colors.white.withValues(alpha: 0.08),
-            width: 0.5,
-          ),
+          top: BorderSide(color: topBorderColor, width: 0.5),
         ),
       ),
       child: SafeArea(
@@ -88,10 +98,7 @@ class _MetallicNavBar extends StatelessWidget {
                                 end: Alignment.bottomRight,
                               ).createShader(bounds)
                             : LinearGradient(
-                                colors: [
-                                  Colors.white.withValues(alpha: 0.35),
-                                  Colors.white.withValues(alpha: 0.35),
-                                ],
+                                colors: [unselectedColor, unselectedColor],
                               ).createShader(bounds),
                         child: AnimatedSwitcher(
                           duration: const Duration(milliseconds: 200),
@@ -111,9 +118,7 @@ class _MetallicNavBar extends StatelessWidget {
                           fontWeight:
                               selected ? FontWeight.w700 : FontWeight.w500,
                           letterSpacing: -0.1,
-                          color: selected
-                              ? AppColors.systemBlue
-                              : Colors.white.withValues(alpha: 0.35),
+                          color: selected ? AppColors.systemBlue : unselectedColor,
                         ),
                       ),
                     ],
