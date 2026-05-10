@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../services/auth_service.dart';
+import '../../shared/widgets/tidy_brand_lockup.dart';
 import '../../theme/app_theme.dart';
 
 class SignInScreen extends ConsumerStatefulWidget {
@@ -64,19 +65,9 @@ class _SignInScreenState extends ConsumerState<SignInScreen> {
           child: Column(
             children: [
               const Spacer(),
-              Container(
-                width: 88,
-                height: 88,
-                decoration: BoxDecoration(
-                  color: AppColors.systemBlue.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(22),
-                ),
-                alignment: Alignment.center,
-                child: const Icon(
-                  CupertinoIcons.sparkles,
-                  size: 44,
-                  color: AppColors.systemBlue,
-                ),
+              const TidyBrandLockup(
+                axis: TidyBrandLockupAxis.vertical,
+                size: TidyBrandLockupSize.large,
               ),
               const SizedBox(height: 28),
               Text(

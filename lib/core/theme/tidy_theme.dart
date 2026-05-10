@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'tidy_brand_palette.dart';
 import 'tidy_colors.dart';
 import 'tidy_radius.dart';
 import 'tidy_size.dart';
@@ -11,10 +12,16 @@ import '../../theme/app_theme.dart' show TidyThemeExtension;
 class TidyTheme {
   const TidyTheme._();
 
-  static ThemeData light() => _build(TidyColors.light, Brightness.light);
-  static ThemeData dark() => _build(TidyColors.dark, Brightness.dark);
+  static ThemeData light() =>
+      _build(TidyColors.light, TidyBrandPalette.light, Brightness.light);
+  static ThemeData dark() =>
+      _build(TidyColors.dark, TidyBrandPalette.dark, Brightness.dark);
 
-  static ThemeData _build(TidyColors colors, Brightness brightness) {
+  static ThemeData _build(
+    TidyColors colors,
+    TidyBrandPalette brand,
+    Brightness brightness,
+  ) {
     final isDark = brightness == Brightness.dark;
 
     return ThemeData(
@@ -133,6 +140,7 @@ class TidyTheme {
       ),
       extensions: <ThemeExtension<dynamic>>[
         colors,
+        brand,
         TidyThemeExtension.fromTidyColors(colors),
       ],
     );

@@ -74,4 +74,20 @@ class TidyTypography {
     height: 1.27,
     letterSpacing: 0.07,
   );
+
+  /// Brand wordmark "TIDY" — thin, wide-tracked, premium.
+  /// Letter-spacing scales with size so it reads correctly at any scale.
+  static TextStyle wordmark({
+    required double fontSize,
+    Color? color,
+    double? letterSpacing,
+  }) {
+    return TextStyle(
+      fontSize: fontSize,
+      fontWeight: FontWeight.w300,
+      height: 1.0,
+      letterSpacing: letterSpacing ?? (fontSize * 0.34),
+      color: color,
+    );
+  }
 }

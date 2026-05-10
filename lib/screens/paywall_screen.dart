@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../features/auth/user_repository.dart';
 import '../features/paywall/iap_service.dart';
 import '../services/auth_service.dart';
+import '../shared/widgets/tidy_logo_mark.dart';
 import '../theme/app_theme.dart';
 
 class PaywallScreen extends ConsumerStatefulWidget {
@@ -130,7 +131,10 @@ class _PaywallScreenState extends ConsumerState<PaywallScreen> {
                     child: Column(
                       children: [
                         const SizedBox(height: 24),
-                        const _AppIconBadge(),
+                        const TidyLogoMark(
+                          size: 84,
+                          forceBrightness: Brightness.dark,
+                        ),
                         const SizedBox(height: 24),
                         const Text(
                           'Tidy Pro',
@@ -267,63 +271,6 @@ class _DismissBar extends StatelessWidget {
             ),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _AppIconBadge extends StatelessWidget {
-  const _AppIconBadge();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      width: 84,
-      height: 84,
-      decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [Color(0xFF007AFF), Color(0xFF5856D6)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(24),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF007AFF).withValues(alpha: 0.40),
-            offset: const Offset(0, 8),
-            blurRadius: 24,
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
-        child: Stack(
-          children: [
-            const Center(
-              child: Icon(
-                CupertinoIcons.sparkles,
-                color: Colors.white,
-                size: 42,
-              ),
-            ),
-            Positioned(
-              top: 0, left: 0, right: 0,
-              height: 42,
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    colors: [
-                      Colors.white.withValues(alpha: 0.20),
-                      Colors.white.withValues(alpha: 0),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }

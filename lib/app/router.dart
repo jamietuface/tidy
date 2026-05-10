@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../features/auth/sign_in_screen.dart';
 import '../features/swipe/group_swipe_screen.dart';
 import '../features/swipe/group_type.dart';
+import '../screens/brand_preview_screen.dart';
 import '../screens/home_screen.dart';
 import '../screens/onboarding_screen.dart';
 import '../screens/paywall_screen.dart';
@@ -54,6 +55,11 @@ final routerProvider = Provider<GoRouter>((ref) {
       GoRoute(
         path: '/settings',
         builder: (context, state) => const SettingsScreen(),
+      ),
+      GoRoute(
+        path: '/brand-preview',
+        name: 'brandPreview',
+        builder: (context, state) => const BrandPreviewScreen(),
       ),
       GoRoute(
         path: '/swipe/group',

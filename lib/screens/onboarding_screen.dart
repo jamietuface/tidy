@@ -2,6 +2,8 @@ import 'dart:ui';
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+
+import '../shared/widgets/tidy_brand_lockup.dart';
 class OnboardingScreen extends StatefulWidget {
   const OnboardingScreen({super.key});
 
@@ -61,6 +63,13 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
           SafeArea(
             child: Column(
               children: [
+                const Padding(
+                  padding: EdgeInsets.only(top: 16, bottom: 4),
+                  child: TidyBrandLockup(
+                    axis: TidyBrandLockupAxis.horizontal,
+                    size: TidyBrandLockupSize.small,
+                  ),
+                ),
                 Expanded(
                   child: PageView.builder(
                     controller: _controller,

@@ -4,6 +4,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+import '../core/theme/tidy_theme_mode_controller.dart';
 import '../features/auth/user_repository.dart';
 import '../services/auth_service.dart';
 import '../shared/widgets/tidy_confirm_dialog.dart';
@@ -18,6 +19,7 @@ class SettingsScreen extends ConsumerWidget {
     final isPro = ref.watch(isProProvider);
     final email = user?.email;
     final isAnon = user?.isAnonymous ?? true;
+    final themePref = ref.watch(tidyThemeModeControllerProvider);
 
     return Scaffold(
       backgroundColor: Colors.black,
@@ -93,6 +95,27 @@ class SettingsScreen extends ConsumerWidget {
                       ],
                     ),
                     const SizedBox(height: 28),
+                    const _SectionLabel('APPEARANCE'),
+                    const SizedBox(height: 10),
+                    _GlassCard(
+                      children: [
+                        _SettingRow(
+                          label: 'Theme',
+                          icon: CupertinoIcons.circle_lefthalf_fill,
+                          color: AppColors.systemGray,
+                          trailing: _ValueLabel(text: themePref.displayLabel),
+                          onTap: () => _openThemeSheet(context, ref),
+                        ),
+                        _Divider(),
+                        _SettingRow(
+                          label: 'Brand Preview',
+                          icon: CupertinoIcons.sparkles,
+                          color: AppColors.systemIndigo,
+                          onTap: () => context.push('/brand-preview'),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 28),
                     const _SectionLabel('NOTIFICATIONS'),
                     const SizedBox(height: 10),
                     const _GlassCard(
@@ -125,6 +148,19 @@ class SettingsScreen extends ConsumerWidget {
                         ),
                       ],
                     ),
+                    const SizedBox(height: 28),
+                    const _SectionLabel('DEV'),
+                    const SizedBox(height: 10),
+                    _GlassCard(
+                      children: [
+                        _SettingRow(
+                          label: 'Brand Preview',
+                          icon: CupertinoIcons.wand_stars,
+                          color: AppColors.systemPurple,
+                          onTap: () => context.push('/brand-preview'),
+                        ),
+                      ],
+                    ),
                   ]),
                 ),
               ),
@@ -138,6 +174,159 @@ class SettingsScreen extends ConsumerWidget {
   Future<void> _open(String url) async {
     final uri = Uri.parse(url);
     if (await canLaunchUrl(uri)) await launchUrl(uri);
+  }
+
+  Future<void> _openThemeSheet(BuildContext context, WidgetRef ref) async {
+    final current = ref.read(tidyThemeModeControllerProvider);
+    await showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withValues(alpha: 0.55),
+      isScrollControlled: false,
+      builder: (sheetCtx) {
+        return _ThemeSheet(current: current);
+      },
+    );
+  }
+}
+
+class _ThemeSheet extends ConsumerWidget {
+  const _ThemeSheet({required this.current});
+  final TidyThemePreference current;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    return SafeArea(
+      top: false,
+      child: Container(
+        margin: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+        decoration: BoxDecoration(
+          color: const Color(0xFF11151D),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(
+            color: Colors.white.withValues(alpha: 0.10),
+            width: 0.5,
+          ),
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+                child: Row(
+                  children: [
+                    const Expanded(
+                      child: Text(
+                        'Appearance',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 17,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: -0.2,
+                        ),
+                      ),
+                    ),
+                    GestureDetector(
+                      onTap: () => Navigator.of(context).pop(),
+                      behavior: HitTestBehavior.opaque,
+                      child: Container(
+                        width: 28,
+                        height: 28,
+                        alignment: Alignment.center,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: Colors.white.withValues(alpha: 0.10),
+                        ),
+                        child: const Icon(
+                          CupertinoIcons.xmark,
+                          color: Colors.white,
+                          size: 13,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              for (final pref in TidyThemePreference.values)
+                _ThemeSheetRow(
+                  pref: pref,
+                  selected: pref == current,
+                  onTap: () async {
+                    await ref
+                        .read(tidyThemeModeControllerProvider.notifier)
+                        .set(pref);
+                    if (context.mounted) Navigator.of(context).pop();
+                  },
+                ),
+              const SizedBox(height: 8),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ThemeSheetRow extends StatelessWidget {
+  const _ThemeSheetRow({
+    required this.pref,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final TidyThemePreference pref;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      behavior: HitTestBehavior.opaque,
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
+        child: Row(
+          children: [
+            Expanded(
+              child: Text(
+                pref.displayLabel,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w400,
+                  letterSpacing: -0.2,
+                ),
+              ),
+            ),
+            if (selected)
+              const Icon(
+                CupertinoIcons.checkmark_alt,
+                color: AppColors.systemBlue,
+                size: 18,
+              ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ValueLabel extends StatelessWidget {
+  const _ValueLabel({required this.text});
+  final String text;
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      text,
+      style: TextStyle(
+        color: Colors.white.withValues(alpha: 0.50),
+        fontSize: 15,
+        fontWeight: FontWeight.w400,
+      ),
+    );
   }
 }
 
