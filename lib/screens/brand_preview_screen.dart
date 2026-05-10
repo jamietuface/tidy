@@ -54,7 +54,7 @@ class BrandPreviewScreen extends ConsumerWidget {
             ),
             const SizedBox(height: 8),
             Text(
-              'Logo should match docs/design_refs/stage_1A/01_light_logo_brand_board.png',
+              'Logo is using the approved raster asset from assets/brand.',
               style: TextStyle(
                 color: brand.textMuted,
                 fontSize: 12,
@@ -90,6 +90,18 @@ class BrandPreviewScreen extends ConsumerWidget {
             const _SurfacePreview(variant: TidyLogoVariant.light),
             const SizedBox(height: 14),
             const _SurfacePreview(variant: TidyLogoVariant.dark),
+            const SizedBox(height: 36),
+            const _SectionLabel('REFERENCE LOCKUP ASSETS'),
+            const SizedBox(height: 14),
+            const _LockupAssetPreview(
+              variant: TidyLogoVariant.light,
+              assetPath: 'assets/brand/tidy_brand_lockup_light.png',
+            ),
+            const SizedBox(height: 14),
+            const _LockupAssetPreview(
+              variant: TidyLogoVariant.dark,
+              assetPath: 'assets/brand/tidy_brand_lockup_dark.png',
+            ),
             const SizedBox(height: 36),
             const _SectionLabel('COMPONENT TOKENS'),
             const SizedBox(height: 14),
@@ -351,6 +363,56 @@ class _SurfacePreview extends StatelessWidget {
                   ),
                 ),
               ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Reference lockup PNG preview — useful for spotting drift between the
+// composed widget lockup and the approved asset.
+
+class _LockupAssetPreview extends StatelessWidget {
+  const _LockupAssetPreview({
+    required this.variant,
+    required this.assetPath,
+  });
+
+  final TidyLogoVariant variant;
+  final String assetPath;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = variant == TidyLogoVariant.dark;
+    final innerBrand = isDark ? TidyBrandPalette.dark : TidyBrandPalette.light;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 24),
+      decoration: BoxDecoration(
+        color: innerBrand.background,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: innerBrand.cardBorder, width: 0.5),
+      ),
+      child: Column(
+        children: [
+          Image.asset(
+            assetPath,
+            height: 96,
+            fit: BoxFit.contain,
+            filterQuality: FilterQuality.high,
+          ),
+          const SizedBox(height: 12),
+          Text(
+            assetPath,
+            style: TextStyle(
+              color: innerBrand.textMuted,
+              fontSize: 11,
+              fontWeight: FontWeight.w500,
+              letterSpacing: 0.4,
+              fontFeatures: const [FontFeature.tabularFigures()],
             ),
           ),
         ],

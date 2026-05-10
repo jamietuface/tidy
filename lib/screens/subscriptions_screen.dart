@@ -2,34 +2,41 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/theme/tidy_brand_palette.dart';
 import '../features/subscriptions/add_subscription_sheet.dart';
 import '../features/subscriptions/subscription.dart';
 import '../features/subscriptions/subscriptions_repository.dart';
 import '../services/auth_service.dart';
 import '../theme/app_theme.dart';
 
-/// Apps tab — metallic dark redesign matching SwipeScreen.
+/// Apps tab — adapts to the active theme. Metallic dark in dark mode,
+/// airy pearl in light mode. Brand-coloured spend summary card and add
+/// CTA read well on either background.
 class SubscriptionsScreen extends ConsumerWidget {
   const SubscriptionsScreen({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final subs = ref.watch(subscriptionsProvider);
+    final brand = context.tidyBrand;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: Colors.black,
+      backgroundColor: brand.background,
       body: Stack(
         children: [
-          const Positioned.fill(
-            child: IgnorePointer(child: _GlowHalos()),
-          ),
+          // Halos only in dark — pearl page should stay clean.
+          if (isDark)
+            const Positioned.fill(
+              child: IgnorePointer(child: _GlowHalos()),
+            ),
           CustomScrollView(
             slivers: [
               SliverAppBar.large(
-                title: const Text(
+                title: Text(
                   'Apps',
                   style: TextStyle(
-                    color: Colors.white,
+                    color: brand.textPrimary,
                     fontWeight: FontWeight.w700,
                     letterSpacing: -0.4,
                   ),
@@ -37,10 +44,10 @@ class SubscriptionsScreen extends ConsumerWidget {
                 backgroundColor: Colors.transparent,
                 surfaceTintColor: Colors.transparent,
                 scrolledUnderElevation: 0,
-                foregroundColor: Colors.white,
+                foregroundColor: brand.textPrimary,
                 actions: [
                   IconButton(
-                    icon: const Icon(CupertinoIcons.add, color: Colors.white),
+                    icon: Icon(CupertinoIcons.add, color: brand.textPrimary),
                     tooltip: 'Add subscription',
                     onPressed: () => showAddSubscriptionSheet(context),
                   ),
@@ -49,11 +56,13 @@ class SubscriptionsScreen extends ConsumerWidget {
               SliverPadding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 sliver: subs.when(
-                  loading: () => const SliverToBoxAdapter(
+                  loading: () => SliverToBoxAdapter(
                     child: Padding(
-                      padding: EdgeInsets.symmetric(vertical: 80),
+                      padding: const EdgeInsets.symmetric(vertical: 80),
                       child: Center(
-                        child: CupertinoActivityIndicator(color: Colors.white),
+                        child: CupertinoActivityIndicator(
+                          color: brand.textSecondary,
+                        ),
                       ),
                     ),
                   ),
@@ -64,7 +73,7 @@ class SubscriptionsScreen extends ConsumerWidget {
                         child: Text(
                           'Could not load subscriptions',
                           style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.6),
+                            color: brand.textSecondary,
                             fontSize: 15,
                           ),
                         ),
@@ -78,7 +87,7 @@ class SubscriptionsScreen extends ConsumerWidget {
                       if (items.isEmpty)
                         const _EmptyState()
                       else ...[
-                        const _DarkSectionHeader('RECENTLY USED'),
+                        const _SectionHeader('RECENTLY USED'),
                         const SizedBox(height: 14),
                         _AppsList(items: items),
                         const SizedBox(height: 24),
@@ -153,18 +162,19 @@ class _GlowHalos extends StatelessWidget {
   }
 }
 
-class _DarkSectionHeader extends StatelessWidget {
-  const _DarkSectionHeader(this.text);
+class _SectionHeader extends StatelessWidget {
+  const _SectionHeader(this.text);
   final String text;
 
   @override
   Widget build(BuildContext context) {
+    final brand = context.tidyBrand;
     return Padding(
       padding: const EdgeInsets.only(left: 4),
       child: Text(
         text,
         style: TextStyle(
-          color: Colors.white.withValues(alpha: 0.50),
+          color: brand.textMuted,
           fontSize: 12,
           fontWeight: FontWeight.w500,
           letterSpacing: 0.8,
@@ -187,6 +197,7 @@ class _SpendSummaryCard extends StatelessWidget {
     final symbol = symbolFor(currency);
     final activeCount = subs.where((s) => s.status == 'active').length;
 
+    // Brand-coloured gradient — reads well on both light and dark pages.
     return Container(
       padding: const EdgeInsets.all(22),
       decoration: BoxDecoration(
@@ -274,37 +285,53 @@ class _AppsList extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final divider = Colors.white.withValues(alpha: 0.06);
+    final brand = context.tidyBrand;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final fill = isDark ? Colors.white.withValues(alpha: 0.06) : brand.surface;
+    final borderColor =
+        isDark ? Colors.white.withValues(alpha: 0.10) : brand.cardBorder;
+    final divider = isDark
+        ? Colors.white.withValues(alpha: 0.06)
+        : brand.cardBorderSubtle;
+
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.06),
+        color: fill,
         borderRadius: BorderRadius.circular(18),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.10),
-          width: 0.5,
-        ),
+        border: Border.all(color: borderColor, width: 0.5),
+        boxShadow: isDark
+            ? const []
+            : [
+                BoxShadow(
+                  color: const Color(0xFF1A2540).withValues(alpha: 0.05),
+                  blurRadius: 14,
+                  offset: const Offset(0, 3),
+                ),
+              ],
       ),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(18),
         child: Stack(
           children: [
-            Positioned(
-              top: 0, left: 0, right: 0, height: 30,
-              child: IgnorePointer(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [
-                        Colors.white.withValues(alpha: 0.06),
-                        Colors.white.withValues(alpha: 0),
-                      ],
+            if (isDark)
+              Positioned(
+                top: 0, left: 0, right: 0, height: 30,
+                child: IgnorePointer(
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          Colors.white.withValues(alpha: 0.06),
+                          Colors.white.withValues(alpha: 0),
+                        ],
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
             Column(
               children: items.asMap().entries.map((e) {
                 final isLast = e.key == items.length - 1;
@@ -391,10 +418,20 @@ class _AppRow extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final brand = context.tidyBrand;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     final color = colorFromHex(sub.colorHex) ?? AppColors.systemBlue;
     final icon = iconFromName(sub.iconName);
     final lastUsed = formatLastUsed(sub.lastUsed);
     final symbol = symbolFor(sub.currency);
+
+    final badgeGradient = isDark
+        ? [color.withValues(alpha: 0.30), color.withValues(alpha: 0.10)]
+        : [color.withValues(alpha: 0.20), color.withValues(alpha: 0.08)];
+    final badgeBorder = isDark
+        ? Colors.white.withValues(alpha: 0.08)
+        : color.withValues(alpha: 0.28);
 
     return GestureDetector(
       onLongPress: () => _showActions(context, ref),
@@ -410,16 +447,10 @@ class _AppRow extends ConsumerWidget {
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [
-                color.withValues(alpha: 0.30),
-                color.withValues(alpha: 0.10),
-              ],
+              colors: badgeGradient,
             ),
             borderRadius: BorderRadius.circular(11),
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.08),
-              width: 0.5,
-            ),
+            border: Border.all(color: badgeBorder, width: 0.5),
           ),
           alignment: Alignment.center,
           child: Icon(icon, color: color, size: 22),
@@ -429,8 +460,8 @@ class _AppRow extends ConsumerWidget {
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(
               sub.name,
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: brand.textPrimary,
                 fontSize: 16,
                 fontWeight: FontWeight.w600,
                 letterSpacing: -0.2,
@@ -440,7 +471,7 @@ class _AppRow extends ConsumerWidget {
             Text(
               lastUsed,
               style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.45),
+                color: brand.textMuted,
                 fontSize: 13,
                 fontWeight: FontWeight.w400,
               ),
@@ -449,8 +480,8 @@ class _AppRow extends ConsumerWidget {
         ),
         Text(
           '$symbol${sub.price.toStringAsFixed(2)}',
-          style: const TextStyle(
-            color: Colors.white,
+          style: TextStyle(
+            color: brand.textPrimary,
             fontSize: 16,
             fontWeight: FontWeight.w600,
             letterSpacing: -0.2,
@@ -468,18 +499,34 @@ class _CancelTipCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final brand = context.tidyBrand;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final fill = isDark ? Colors.white.withValues(alpha: 0.06) : brand.surface;
+    final borderColor =
+        isDark ? Colors.white.withValues(alpha: 0.10) : brand.cardBorder;
+    final badgeBorder = isDark
+        ? Colors.white.withValues(alpha: 0.08)
+        : AppColors.systemOrange.withValues(alpha: 0.28);
+
     final daysAgo = DateTime.now().difference(candidate.lastUsed!).inDays;
     final saving = '${symbolFor(candidate.currency)}'
         '${candidate.price.toStringAsFixed(2)}';
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.06),
+        color: fill,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: Colors.white.withValues(alpha: 0.10),
-          width: 0.5,
-        ),
+        border: Border.all(color: borderColor, width: 0.5),
+        boxShadow: isDark
+            ? const []
+            : [
+                BoxShadow(
+                  color: const Color(0xFF1A2540).withValues(alpha: 0.05),
+                  blurRadius: 12,
+                  offset: const Offset(0, 2),
+                ),
+              ],
       ),
       child: Row(children: [
         Container(
@@ -489,16 +536,18 @@ class _CancelTipCard extends StatelessWidget {
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [
-                AppColors.systemOrange.withValues(alpha: 0.30),
-                AppColors.systemOrange.withValues(alpha: 0.10),
-              ],
+              colors: isDark
+                  ? [
+                      AppColors.systemOrange.withValues(alpha: 0.30),
+                      AppColors.systemOrange.withValues(alpha: 0.10),
+                    ]
+                  : [
+                      AppColors.systemOrange.withValues(alpha: 0.20),
+                      AppColors.systemOrange.withValues(alpha: 0.08),
+                    ],
             ),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(
-              color: Colors.white.withValues(alpha: 0.08),
-              width: 0.5,
-            ),
+            border: Border.all(color: badgeBorder, width: 0.5),
           ),
           child: const Icon(
             CupertinoIcons.lightbulb_fill,
@@ -511,8 +560,8 @@ class _CancelTipCard extends StatelessWidget {
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text(
               'Cancel ${candidate.name}?',
-              style: const TextStyle(
-                color: Colors.white,
+              style: TextStyle(
+                color: brand.textPrimary,
                 fontSize: 15,
                 fontWeight: FontWeight.w600,
                 letterSpacing: -0.2,
@@ -522,7 +571,7 @@ class _CancelTipCard extends StatelessWidget {
             Text(
               'Last used $daysAgo days ago · saves $saving/mo',
               style: TextStyle(
-                color: Colors.white.withValues(alpha: 0.55),
+                color: brand.textSecondary,
                 fontSize: 13,
               ),
             ),
@@ -531,7 +580,7 @@ class _CancelTipCard extends StatelessWidget {
         Icon(
           CupertinoIcons.chevron_right,
           size: 14,
-          color: Colors.white.withValues(alpha: 0.35),
+          color: brand.textMuted,
         ),
       ]),
     );
@@ -543,6 +592,7 @@ class _EmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final brand = context.tidyBrand;
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 60),
       child: Column(
@@ -550,13 +600,13 @@ class _EmptyState extends StatelessWidget {
           Icon(
             CupertinoIcons.app_badge,
             size: 48,
-            color: Colors.white.withValues(alpha: 0.30),
+            color: brand.textMuted,
           ),
           const SizedBox(height: 14),
           Text(
             'No subscriptions yet',
             style: TextStyle(
-              color: Colors.white.withValues(alpha: 0.55),
+              color: brand.textSecondary,
               fontSize: 15,
             ),
           ),

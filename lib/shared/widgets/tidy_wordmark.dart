@@ -16,14 +16,12 @@ class TidyWordmark extends StatelessWidget {
     this.letterSpacing,
     this.color,
     this.variant = TidyLogoVariant.auto,
-    this.forceBrightness,
   });
 
   final double fontSize;
   final double? letterSpacing;
   final Color? color;
   final TidyLogoVariant variant;
-  final Brightness? forceBrightness;
 
   Brightness _resolveBrightness(BuildContext context) {
     switch (variant) {
@@ -32,7 +30,7 @@ class TidyWordmark extends StatelessWidget {
       case TidyLogoVariant.dark:
         return Brightness.dark;
       case TidyLogoVariant.auto:
-        return forceBrightness ?? Theme.of(context).brightness;
+        return Theme.of(context).brightness;
     }
   }
 

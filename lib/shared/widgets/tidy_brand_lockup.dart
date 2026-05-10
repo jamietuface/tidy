@@ -21,16 +21,18 @@ class TidyBrandLockup extends StatelessWidget {
     this.monochrome = false,
     this.showBadge = true,
     this.variant = TidyLogoVariant.auto,
-    this.forceBrightness,
   });
 
   final TidyBrandLockupAxis axis;
   final TidyBrandLockupSize size;
   final bool showGlow;
   final bool monochrome;
+
+  /// Kept for backwards-compat. The raster assets always include the
+  /// badge, so this is a no-op today.
   final bool showBadge;
+
   final TidyLogoVariant variant;
-  final Brightness? forceBrightness;
 
   // ---- Size table -----------------------------------------------------
   // Tuned so the wordmark sits comfortably next to the logo at every size.
@@ -73,14 +75,11 @@ class TidyBrandLockup extends StatelessWidget {
       size: _logoSize,
       showGlow: showGlow,
       monochrome: monochrome,
-      showBadge: showBadge,
       variant: variant,
-      forceBrightness: forceBrightness,
     );
     final word = TidyWordmark(
       fontSize: _wordSize,
       variant: variant,
-      forceBrightness: forceBrightness,
     );
 
     if (axis == TidyBrandLockupAxis.horizontal) {
