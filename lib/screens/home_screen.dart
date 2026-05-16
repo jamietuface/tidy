@@ -2,53 +2,63 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../core/providers/active_tab_provider.dart';
 import '../core/theme/tidy_brand_palette.dart';
 import '../theme/app_theme.dart';
+import 'dashboard_screen.dart';
+import 'settings_screen.dart';
 import 'subscriptions_screen.dart';
 import 'swipe_screen.dart';
 
-class HomeScreen extends ConsumerStatefulWidget {
+class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
   @override
-  ConsumerState<HomeScreen> createState() => _HomeScreenState();
-}
-
-class _HomeScreenState extends ConsumerState<HomeScreen> {
-  int _tab = 0;
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final brand = context.tidyBrand;
+    final tab = ref.watch(activeHomeTabProvider);
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    // Dashboard wants a soft surface, not pure black; mirror that on the
+    // shell so there's no harsh edge behind any tab.
+    final shellBg = isDark ? const Color(0xFF05070B) : brand.background;
+
     return Scaffold(
-      backgroundColor: brand.background,
+      backgroundColor: shellBg,
       body: IndexedStack(
-        index: _tab,
-        children: const [SwipeScreen(), SubscriptionsScreen()],
+        index: tab.index,
+        children: const [
+          DashboardScreen(),
+          SwipeScreen(),
+          SubscriptionsScreen(),
+          SettingsScreen(embedded: true),
+        ],
       ),
-      bottomNavigationBar: _MetallicNavBar(
-        selectedIndex: _tab,
-        onTap: (i) => setState(() => _tab = i),
+      bottomNavigationBar: _HomeBottomNavBar(
+        selected: tab,
+        onTap: (t) =>
+            ref.read(activeHomeTabProvider.notifier).state = t,
       ),
     );
   }
 }
 
-/// Bottom navigation bar — adapts to theme.
-/// Selected: gradient blue→indigo with brand-blue label.
+/// Bottom navigation bar — 4 tabs, theme-aware.
+/// Selected: gradient blue→indigo icon with brand-blue label.
 /// Unselected: muted text colour from the brand palette.
-class _MetallicNavBar extends StatelessWidget {
-  const _MetallicNavBar({
-    required this.selectedIndex,
-    required this.onTap,
-  });
+class _HomeBottomNavBar extends StatelessWidget {
+  const _HomeBottomNavBar({required this.selected, required this.onTap});
 
-  final int selectedIndex;
-  final ValueChanged<int> onTap;
+  final HomeTab selected;
+  final ValueChanged<HomeTab> onTap;
 
-  static const _items = [
-    (CupertinoIcons.photo, CupertinoIcons.photo_fill, 'Photos'),
-    (CupertinoIcons.app, CupertinoIcons.app_fill, 'Apps'),
+  // (outlined, filled, label, tab)
+  static const _items = <(IconData, IconData, String, HomeTab)>[
+    (CupertinoIcons.house, CupertinoIcons.house_fill, 'Home', HomeTab.home),
+    (CupertinoIcons.photo, CupertinoIcons.photo_fill, 'Photos', HomeTab.photos),
+    (CupertinoIcons.square_grid_2x2, CupertinoIcons.square_grid_2x2_fill,
+        'Apps', HomeTab.apps),
+    (CupertinoIcons.gear, CupertinoIcons.gear_solid, 'Settings',
+        HomeTab.settings),
   ];
 
   @override
@@ -76,19 +86,18 @@ class _MetallicNavBar extends StatelessWidget {
         child: SizedBox(
           height: 56,
           child: Row(
-            children: _items.asMap().entries.map((e) {
-              final index = e.key;
-              final (icon, iconFilled, label) = e.value;
-              final selected = index == selectedIndex;
+            children: _items.map((item) {
+              final (icon, iconFilled, label, tab) = item;
+              final isSelected = tab == selected;
               return Expanded(
                 child: GestureDetector(
                   behavior: HitTestBehavior.opaque,
-                  onTap: () => onTap(index),
+                  onTap: () => onTap(tab),
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       ShaderMask(
-                        shaderCallback: (bounds) => selected
+                        shaderCallback: (bounds) => isSelected
                             ? const LinearGradient(
                                 colors: [
                                   Color(0xFF007AFF),
@@ -103,9 +112,9 @@ class _MetallicNavBar extends StatelessWidget {
                         child: AnimatedSwitcher(
                           duration: const Duration(milliseconds: 200),
                           child: Icon(
-                            selected ? iconFilled : icon,
-                            key: ValueKey(selected),
-                            size: 25,
+                            isSelected ? iconFilled : icon,
+                            key: ValueKey(isSelected),
+                            size: 24,
                             color: Colors.white,
                           ),
                         ),
@@ -115,10 +124,13 @@ class _MetallicNavBar extends StatelessWidget {
                         label,
                         style: TextStyle(
                           fontSize: 10,
-                          fontWeight:
-                              selected ? FontWeight.w700 : FontWeight.w500,
+                          fontWeight: isSelected
+                              ? FontWeight.w700
+                              : FontWeight.w500,
                           letterSpacing: -0.1,
-                          color: selected ? AppColors.systemBlue : unselectedColor,
+                          color: isSelected
+                              ? AppColors.systemBlue
+                              : unselectedColor,
                         ),
                       ),
                     ],

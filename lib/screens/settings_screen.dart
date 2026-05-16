@@ -12,7 +12,11 @@ import '../shared/widgets/tidy_confirm_dialog.dart';
 import '../theme/app_theme.dart';
 
 class SettingsScreen extends ConsumerWidget {
-  const SettingsScreen({super.key});
+  const SettingsScreen({super.key, this.embedded = false});
+
+  /// When true, hides the back-arrow chevron so the screen can live inside
+  /// the Home bottom-nav IndexedStack. Direct `/settings` pushes pass false.
+  final bool embedded;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -48,13 +52,16 @@ class SettingsScreen extends ConsumerWidget {
                 surfaceTintColor: Colors.transparent,
                 scrolledUnderElevation: 0,
                 foregroundColor: brand.textPrimary,
-                leading: IconButton(
-                  icon: Icon(
-                    CupertinoIcons.chevron_back,
-                    color: brand.textPrimary,
-                  ),
-                  onPressed: () => context.pop(),
-                ),
+                automaticallyImplyLeading: !embedded,
+                leading: embedded
+                    ? null
+                    : IconButton(
+                        icon: Icon(
+                          CupertinoIcons.chevron_back,
+                          color: brand.textPrimary,
+                        ),
+                        onPressed: () => context.pop(),
+                      ),
               ),
               SliverPadding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 32),
