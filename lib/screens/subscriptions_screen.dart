@@ -261,9 +261,9 @@ class _SpendSummaryCard extends StatelessWidget {
                 ),
                 const SizedBox(height: 6),
                 Text(
-                  subs.isEmpty
-                      ? 'No active subscriptions'
-                      : '$activeCount active subscription${activeCount == 1 ? '' : 's'}',
+                  activeCount == 0
+                      ? '0 active apps'
+                      : '$activeCount active app${activeCount == 1 ? '' : 's'}',
                   style: TextStyle(
                     color: Colors.white.withValues(alpha: 0.70),
                     fontSize: 13,

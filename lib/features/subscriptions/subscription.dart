@@ -29,9 +29,10 @@ class Subscription {
     DocumentSnapshot<Map<String, dynamic>> doc,
   ) {
     final d = doc.data() ?? const {};
+    final rawName = (d['name'] as String?)?.trim() ?? '';
     return Subscription(
       id: doc.id,
-      name: (d['name'] as String?) ?? 'Unknown',
+      name: rawName.isEmpty ? 'Unnamed app' : rawName,
       price: ((d['price'] as num?) ?? 0).toDouble(),
       currency: (d['currency'] as String?) ?? 'GBP',
       lastUsed: (d['lastUsed'] as Timestamp?)?.toDate(),
