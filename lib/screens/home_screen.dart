@@ -96,28 +96,15 @@ class _HomeBottomNavBar extends StatelessWidget {
                   child: Column(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      ShaderMask(
-                        shaderCallback: (bounds) => isSelected
-                            ? const LinearGradient(
-                                colors: [
-                                  Color(0xFF007AFF),
-                                  Color(0xFF5856D6),
-                                ],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ).createShader(bounds)
-                            : LinearGradient(
-                                colors: [unselectedColor, unselectedColor],
-                              ).createShader(bounds),
-                        child: AnimatedSwitcher(
-                          duration: const Duration(milliseconds: 200),
-                          child: Icon(
-                            isSelected ? iconFilled : icon,
-                            key: ValueKey(isSelected),
-                            size: 24,
-                            color: Colors.white,
-                          ),
-                        ),
+                      // Plain Icon — no AnimatedSwitcher / no ShaderMask.
+                      // The earlier ShaderMask+AnimatedSwitcher combo was
+                      // triggering '!semantics.parentDataDirty' asserts.
+                      Icon(
+                        isSelected ? iconFilled : icon,
+                        size: 24,
+                        color: isSelected
+                            ? AppColors.systemBlue
+                            : unselectedColor,
                       ),
                       const SizedBox(height: 3),
                       Text(
