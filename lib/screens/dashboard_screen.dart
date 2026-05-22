@@ -2,15 +2,19 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../core/providers/active_tab_provider.dart';
+import '../features/subscriptions/subscription.dart';
+import '../features/subscriptions/subscriptions_repository.dart';
+import '../features/swipe/photo_decisions_repository.dart';
 
-/// Minimal, intentionally-static Home dashboard.
+/// Home dashboard — data pass 1.
 ///
-/// Stability over polish: previous richer dashboard was triggering
-/// `!semantics.parentDataDirty` assertion spam in release. This version
-/// uses only flat layout primitives, no AsyncValue, no streams, no
-/// AnimatedSwitcher, no Slivers, no SingleChildScrollView, no nested
-/// tappable cards. Data wiring will be re-added in a separate pass once
-/// the tab is verified to render stably.
+/// Layout is intentionally identical to the post-stabilisation minimal
+/// version. Only text values are now driven by existing providers via the
+/// safe `.asData?.value ?? fallback` pattern, which never throws on
+/// loading/error and never blanks the screen.
+///
+/// Banned widgets still banned: AnimatedSwitcher, AnimatedContainer,
+/// ShaderMask, Slivers, IntrinsicHeight, MergeSemantics, etc.
 class DashboardScreen extends ConsumerWidget {
   const DashboardScreen({super.key});
 
@@ -32,6 +36,27 @@ class DashboardScreen extends ConsumerWidget {
     final borderColor = isDark
         ? Colors.white.withValues(alpha: 0.10)
         : const Color(0xFFDCE3ED);
+
+    // ── Data: safe fallbacks. Loading/error → null → defaults. ───────────
+    // existing DecisionStats already provides what we need:
+    //   .deleted     → markedCount
+    //   .bytesFreed  → sum of sizeBytes for deleted decisions (this is
+    //                  semantically "ready to delete", not actually freed)
+    final stats = ref.watch(decisionStatsProvider).asData?.value ??
+        DecisionStats.empty;
+    final markedCount = stats.deleted;
+    final readyBytes = stats.bytesFreed;
+    // TODO(tidy): track permanentlyFreedBytes after
+    // PhotoDeletionService.deleteFromLibrary returns the iOS-confirmed
+    // delete list. Until then, Freed stays honestly at 0.
+    const freedBytes = 0;
+
+    final subs = ref.watch(subscriptionsProvider).asData?.value ??
+        const <Subscription>[];
+    final active = subs.where((s) => s.status == 'active').toList();
+    // TODO(tidy): convert annual prices to monthly equivalent once the
+    // Subscription model stores a billing period.
+    final monthlyTotal = active.fold<double>(0, (sum, s) => sum + s.price);
 
     return Scaffold(
       backgroundColor: bg,
@@ -76,7 +101,7 @@ class DashboardScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 14),
                     Text(
-                      '0 marked',
+                      '$markedCount marked',
                       style: TextStyle(
                         color: textSecondary,
                         fontSize: 14,
@@ -84,7 +109,7 @@ class DashboardScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '0 MB ready',
+                      '${_formatBytes(readyBytes)} ready',
                       style: TextStyle(
                         color: textSecondary,
                         fontSize: 14,
@@ -92,7 +117,7 @@ class DashboardScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '0 MB freed',
+                      '${_formatBytes(freedBytes)} freed',
                       style: TextStyle(
                         color: textSecondary,
                         fontSize: 14,
@@ -125,6 +150,46 @@ class DashboardScreen extends ConsumerWidget {
                         ),
                       ),
                     ),
+                    // Review selected — only when there is something to review.
+                    // Never permanently deletes from Home; switches to Photos
+                    // tab and surfaces a SnackBar pointing at the review flow.
+                    // TODO(tidy): replace with a dedicated review/delete-queue
+                    // screen that ends in the iOS native confirmation.
+                    if (markedCount > 0) ...[
+                      const SizedBox(height: 10),
+                      SizedBox(
+                        width: double.infinity,
+                        child: TextButton(
+                          onPressed: () {
+                            ref
+                                .read(activeHomeTabProvider.notifier)
+                                .state = HomeTab.photos;
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content:
+                                    Text('Review selected photos from Photos'),
+                                duration: Duration(seconds: 2),
+                                behavior: SnackBarBehavior.floating,
+                              ),
+                            );
+                          },
+                          style: TextButton.styleFrom(
+                            foregroundColor: const Color(0xFF007AFF),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: Text(
+                            'Review selected ($markedCount)',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ),
@@ -152,7 +217,9 @@ class DashboardScreen extends ConsumerWidget {
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      'No photos waiting',
+                      markedCount == 0
+                          ? 'No photos waiting'
+                          : '$markedCount · ${_formatBytes(readyBytes)}',
                       style: TextStyle(
                         color: textMuted,
                         fontSize: 12,
@@ -187,9 +254,19 @@ class DashboardScreen extends ConsumerWidget {
                               fontWeight: FontWeight.w600,
                             ),
                           ),
-                          const SizedBox(height: 4),
+                          const SizedBox(height: 2),
                           Text(
-                            'Open Apps',
+                            '£${monthlyTotal.toStringAsFixed(2)}',
+                            style: TextStyle(
+                              color: textPrimary,
+                              fontSize: 18,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: -0.3,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            _activeAppsLabel(active.length),
                             style: TextStyle(
                               color: textMuted,
                               fontSize: 12,
@@ -217,7 +294,7 @@ class DashboardScreen extends ConsumerWidget {
               ),
               const SizedBox(height: 18),
 
-              // Tidy Assist line
+              // Tidy Assist line — intentionally static this pass.
               Text(
                 'Tidy Assist: Start with grouped photos to clean faster.',
                 style: TextStyle(
@@ -232,4 +309,20 @@ class DashboardScreen extends ConsumerWidget {
       ),
     );
   }
+}
+
+// ── Local helpers ──────────────────────────────────────────────────────────
+
+String _formatBytes(int bytes) {
+  if (bytes <= 0) return '0 MB';
+  if (bytes < 1024 * 1024) return '${(bytes / 1024).round()} KB';
+  final mb = bytes / (1024 * 1024);
+  if (mb < 1024) return '${mb.toStringAsFixed(1)} MB';
+  return '${(mb / 1024).toStringAsFixed(1)} GB';
+}
+
+String _activeAppsLabel(int count) {
+  if (count == 0) return '0 active apps';
+  if (count == 1) return '1 active app';
+  return '$count active apps';
 }
